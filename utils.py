@@ -119,7 +119,9 @@ PLACES = [
      "description": "西湖边经典登山线，可俯瞰断桥与保俶塔。"},
     {"name": "北高峰", "lng": 120.1110, "lat": 30.2560, "is_hiking": True,
      "visit_minutes": 150, "is_water_island": False,
-     "description": "灵隐寺后山，登顶可远眺西溪与西湖。"},
+     "description": "灵隐寺后山，登顶可远眺西溪与西湖。",
+     "end_climb_point": "北高峰索道站",
+     "end_climb_lng": 120.1068, "end_climb_lat": 30.2431},
     {"name": "玉皇山", "lng": 120.1390, "lat": 30.2140, "is_hiking": True,
      "visit_minutes": 120, "is_water_island": False,
      "description": "西湖群山东侧，道教文化与江湖汇观景致。"},
@@ -145,7 +147,8 @@ PLACES = [
      "visit_minutes": 90, "is_water_island": False,
      "description": "马家坞观景台（纳福云台），俯瞰西湖与杭城，与北高峰山脊线相连。",
      "type": "登山",
-     "start_climb_point": "马家坞村口",
+     "start_climb_point": "马家坞牌坊",
+     "start_climb_lng": 120.1001, "start_climb_lat": 30.2574,
      "hiking_route_desc": "马家坞村口沿石阶上山，经纳福云台后接入西湖群山西山游步道",
      "end_climb_point": "北高峰",
      "hiking_duration_min": 75},
@@ -512,22 +515,32 @@ def build_legs(origin_geo, dest_geo, route, key):
             leg["duration_min"] = BOAT_MINUTES
             leg["polyline"] = [(start["lng"], start["lat"]), (end["lng"], end["lat"])]
         else:
-            km = haversine_km(start["lng"], start["lat"], end["lng"], end["lat"])
-            walk = amap_walking(start["lng"], start["lat"], end["lng"], end["lat"], key)
+            # 连续相邻两个登山景点：改用下山出口 / 上山起点坐标计算，而非景点中心点
+            if bool(start.get("is_hiking")) and bool(end.get("is_hiking")):
+                s_lng = start.get("end_climb_lng", start["lng"])
+                s_lat = start.get("end_climb_lat", start["lat"])
+                e_lng = end.get("start_climb_lng", end["lng"])
+                e_lat = end.get("start_climb_lat", end["lat"])
+            else:
+                s_lng, s_lat = start["lng"], start["lat"]
+                e_lng, e_lat = end["lng"], end["lat"]
+
+            km = haversine_km(s_lng, s_lat, e_lng, e_lat)
+            walk = amap_walking(s_lng, s_lat, e_lng, e_lat, key)
             walk_min = walk["duration_min"] if walk else _estimate_walk_minutes(km)
             walk_polyline = walk["polyline"] if walk else None
 
             if walk_min <= WALK_LIMIT_MIN:
                 leg["mode"] = "步行"
                 leg["duration_min"] = walk_min
-                leg["polyline"] = walk_polyline or [(start["lng"], start["lat"]), (end["lng"], end["lat"])]
+                leg["polyline"] = walk_polyline or [(s_lng, s_lat), (e_lng, e_lat)]
             else:
-                drive = amap_driving(start["lng"], start["lat"], end["lng"], end["lat"], key)
+                drive = amap_driving(s_lng, s_lat, e_lng, e_lat, key)
                 drive_min = drive["duration_min"] if drive else _estimate_drive_minutes(km)
                 drive_polyline = drive["polyline"] if drive else None
                 leg["mode"] = "打车"
                 leg["duration_min"] = drive_min
-                leg["polyline"] = drive_polyline or [(start["lng"], start["lat"]), (end["lng"], end["lat"])]
+                leg["polyline"] = drive_polyline or [(s_lng, s_lat), (e_lng, e_lat)]
 
         legs.append(leg)
 

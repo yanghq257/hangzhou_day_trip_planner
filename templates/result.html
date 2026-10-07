@@ -66,6 +66,20 @@
       vertical-align: middle;
       margin-right: 4px;
     }
+    .key-actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 8px;
+    }
+    .key-actions label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--muted);
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -152,6 +166,11 @@
         <summary>地图高级设置（填写高德 JS API Key 启用动态地图，留空则显示静态图）</summary>
         <div class="map-settings-body">
           <input type="password" id="js_api_key" placeholder="高德 JS API Key（Web端 JS API）" autocomplete="off">
+          <div class="key-actions">
+            <label><input type="checkbox" id="js_api_key_save"> 保存到本机</label>
+            <button type="button" class="btn btn-ghost" id="js_api_key_clear">清除</button>
+          </div>
+          <p class="hint" id="js_api_key_hint" style="display:none;">已保存到本机（localStorage），下次打开自动填充</p>
           <button type="button" class="btn btn-ghost" id="init-map-btn">加载动态地图</button>
         </div>
       </details>
@@ -298,9 +317,58 @@
         document.head.appendChild(s);
       }
 
+      // ---------- 高德 JS API Key：localStorage 记忆（仅前端本地保存，不上传后端） ----------
+      var jsKeyInput = document.getElementById('js_api_key');
+      var jsKeySaveBox = document.getElementById('js_api_key_save');
+      var jsKeyClearBtn = document.getElementById('js_api_key_clear');
+      var jsKeyHint = document.getElementById('js_api_key_hint');
+
+      function renderJsKeyHint(val) {
+        jsKeyHint.style.display = val ? 'block' : 'none';
+      }
+
+      try {
+        var savedJsKey = localStorage.getItem('amap_js_api_key');
+        if (savedJsKey) {
+          jsKeyInput.value = savedJsKey;
+          if (jsKeySaveBox) jsKeySaveBox.checked = true;
+          renderJsKeyHint(savedJsKey);
+        }
+      } catch (e) {
+        // localStorage 不可用时静默忽略
+      }
+
+      if (jsKeyClearBtn) {
+        jsKeyClearBtn.addEventListener('click', function () {
+          try { localStorage.removeItem('amap_js_api_key'); } catch (e) {}
+          jsKeyInput.value = '';
+          if (jsKeySaveBox) jsKeySaveBox.checked = false;
+          renderJsKeyHint('');
+        });
+      }
+
+      if (jsKeySaveBox) {
+        jsKeySaveBox.addEventListener('change', function () {
+          if (!jsKeySaveBox.checked) {
+            try { localStorage.removeItem('amap_js_api_key'); } catch (e) {}
+            renderJsKeyHint('');
+          }
+        });
+      }
+
       document.getElementById('init-map-btn').addEventListener('click', function () {
-        var key = document.getElementById('js_api_key').value.trim();
+        var key = jsKeyInput.value.trim();
         if (!key) { alert('请先填写高德 JS API Key'); return; }
+        try {
+          if (jsKeySaveBox && jsKeySaveBox.checked) {
+            localStorage.setItem('amap_js_api_key', key);
+            renderJsKeyHint(key);
+          } else {
+            localStorage.removeItem('amap_js_api_key');
+          }
+        } catch (e) {
+          // localStorage 不可用时静默忽略
+        }
         document.getElementById('static-map-wrap').style.display = 'none';
         document.getElementById('map').style.display = 'block';
         loadAMap(key, initMap);
