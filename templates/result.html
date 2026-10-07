@@ -327,15 +327,24 @@
         jsKeyHint.style.display = val ? 'block' : 'none';
       }
 
-      try {
-        var savedJsKey = localStorage.getItem('amap_js_api_key');
-        if (savedJsKey) {
-          jsKeyInput.value = savedJsKey;
-          if (jsKeySaveBox) jsKeySaveBox.checked = true;
-          renderJsKeyHint(savedJsKey);
+      function autoFillJsApiKey() {
+        try {
+          var savedJsKey = localStorage.getItem('amap_js_api_key');
+          if (savedJsKey) {
+            jsKeyInput.value = savedJsKey;
+            if (jsKeySaveBox) jsKeySaveBox.checked = true;
+            renderJsKeyHint(savedJsKey);
+          }
+        } catch (e) {
+          // localStorage 不可用时静默忽略
         }
-      } catch (e) {
-        // localStorage 不可用时静默忽略
+      }
+
+      // 页面加载完成后自动回填；若脚本执行时 DOM 已就绪则立即回填
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', autoFillJsApiKey);
+      } else {
+        autoFillJsApiKey();
       }
 
       if (jsKeyClearBtn) {
