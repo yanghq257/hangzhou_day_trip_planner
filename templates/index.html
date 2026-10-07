@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>杭州一日路线规划器</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    /* 仅前端 UI：同一组地址的三级下拉放在同一个边框主容器内 */
+    .cascade-box {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      background: #fafbfc;
+      margin-bottom: 8px;
+    }
+    .cascade-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .cascade-row select.cascade {
+      flex: 1 1 150px;
+      margin-bottom: 0;
+    }
+    .selected-address {
+      min-height: 38px;
+      padding: 9px 12px;
+      margin-bottom: 10px;
+      background: #fff;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      color: var(--text);
+      word-break: break-all;
+    }
+    .selected-address.empty {
+      color: var(--muted);
+    }
+    .manual-address {
+      margin-top: 4px;
+    }
+    .manual-address .manual-title {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>杭州主城区游玩锻炼一日路线规划器</h1>
+      <p class="subtitle">纯规则引擎 · 不调用任何大模型 · 高德 API + 内置景点库</p>
+    </header>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+    {% if has_env_key %}
+    <div class="alert alert-info">已读取环境变量 AMAP_KEY，网页输入可覆盖。</div>
+    {% endif %}
+
+    <form method="post" action="/plan" class="card" id="plan-form">
+      <label class="field">
+        <span>高德 API Key</span>
+        <input type="password" name="amap_key" id="amap_key" placeholder="可留空使用环境变量 AMAP_KEY" autocomplete="off">
+        <p class="hint" id="amap_key_hint" style="display:none;">已保存本次会话高德Key，刷新页面无需重复填写</p>
+      </label>
+
+      <div class="field">
+        <span>出发地址</span>
+        <div class="cascade-box">
+          <div class="selected-address empty" id="origin_display">未选择（请通过下方下拉选择小区）</div>
+          <div class="cascade-row">
+            <select id="origin_district" class="cascade">
+              <option value="">请选择主城区</option>
+            </select>
+            <select id="origin_street" class="cascade" disabled>
+              <option value="">请选择街道</option>
+            </select>
+            <select id="origin_community" class="cascade" disabled>
+              <option value="">请选择小区</option>
+            </select>
+          </div>
+        </div>
+        <input type="hidden" name="origin" id="origin" value="{{ form.origin }}">
+        <div class="manual-address">
+          <span class="manual-title">手动输入自定义地址（选填，与下拉互斥）</span>
+          <input type="text" id="origin_manual" value="{{ form.origin }}" placeholder="例如：杭州市西湖区中杭府" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="field">
+        <span>返回地址</span>
+        <div class="cascade-box">
+          <div class="selected-address empty" id="destination_display">未选择（请通过下方下拉选择小区）</div>
+          <div class="cascade-row">
+            <select id="destination_district" class="cascade">
+              <option value="">请选择主城区</option>
+            </select>
+            <select id="destination_street" class="cascade" disabled>
+              <option value="">请选择街道</option>
+            </select>
+            <select id="destination_community" class="cascade" disabled>
+              <option value="">请选择小区</option>
+            </select>
+          </div>
+        </div>
+        <input type="hidden" name="destination" id="destination" value="{{ form.destination }}">
+        <div class="manual-address">
+          <span class="manual-title">手动输入自定义地址（选填，与下拉互斥）</span>
+          <input type="text" id="destination_manual" value="{{ form.destination }}" placeholder="可与出发地址相同" autocomplete="off">
+        </div>
+      </div>
+
+      <fieldset class="field">
+        <legend>是否爬山</legend>
+        <div class="radio-row">
+          <label><input type="radio" name="hiking" value="是" {% if form.hiking == "是" %}checked{% endif %}> 是</label>
+          <label><input type="radio" name="hiking" value="否" {% if form.hiking == "否" %}checked{% endif %}> 否</label>
+        </div>
+      </fieldset>
+
+      <div class="field">
+        <span>必去景点（可多条，0 条也允许）</span>
+        <div id="must-visit-list">
+          {% if form.must_visit %}
+            {% for mv in form.must_visit %}
+            <input type="text" name="must_visit" value="{{ mv }}" placeholder="例如：龙井村">
+            {% endfor %}
+          {% else %}
+            <input type="text" name="must_visit" value="" placeholder="例如：龙井村">
+          {% endif %}
+        </div>
+        <button type="button" class="btn btn-ghost" onclick="addMustVisit()">+ 添加必去景点</button>
+      </div>
+
+      <label class="field">
+        <span>游玩景点数量（2-6）</span>
+        <input type="number" name="count" min="2" max="6" value="{{ form.count }}" required>
+      </label>
+
+      <button type="submit" class="btn btn-primary">生成路线</button>
+    </form>
+  </div>
+
+  <script>
+    function addMustVisit() {
+      var list = document.getElementById('must-visit-list');
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.name = 'must_visit';
+      input.placeholder = '例如：三潭印月';
+      list.appendChild(input);
+    }
+
+    // ---------- 高德 Key：sessionStorage 记忆，不显示明文 ----------
+    (function () {
+      var keyInput = document.getElementById('amap_key');
+      var hint = document.getElementById('amap_key_hint');
+      try {
+        var saved = sessionStorage.getItem('amap_key');
+        if (saved) {
+          keyInput.value = saved;
+          hint.style.display = 'block';
+        }
+      } catch (e) {
+        // sessionStorage 不可用时静默忽略
+      }
+    })();
+
+    // ---------- 三级联动地址选择器 ----------
+    var addressTree = {};
+
+    function resetSelect(sel, placeholder, disabled) {
+      sel.innerHTML = '';
+      var opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = placeholder;
+      sel.appendChild(opt);
+      sel.value = '';
+      sel.disabled = disabled;
+    }
+
+    function getSelectedCommunity(prefix) {
+      var sel = document.getElementById(prefix + '_community');
+      return (!sel.disabled && sel.value) ? sel.value : '';
+    }
+
+    function getFullAddress(prefix) {
+      var parts = [];
+      ['district', 'street', 'community'].forEach(function (kind) {
+        var v = document.getElementById(prefix + '_' + kind).value;
+        if (v) parts.push(v);
+      });
+      return parts.join(' / ');
+    }
+
+    function updateDisplay(prefix) {
+      var display = document.getElementById(prefix + '_display');
+      var full = getFullAddress(prefix);
+      if (full) {
+        display.textContent = full;
+        display.classList.remove('empty');
+      } else {
+        display.textContent = '未选择（请通过下方下拉选择小区）';
+        display.classList.add('empty');
+      }
+    }
+
+    function clearDropdown(prefix) {
+      var districtSel = document.getElementById(prefix + '_district');
+      var streetSel = document.getElementById(prefix + '_street');
+      var communitySel = document.getElementById(prefix + '_community');
+      districtSel.value = '';
+      resetSelect(streetSel, '请选择街道', true);
+      resetSelect(communitySel, '请选择小区', true);
+      updateDisplay(prefix);
+    }
+
+    function initAddressGroup(prefix) {
+      var districtSel = document.getElementById(prefix + '_district');
+      var streetSel = document.getElementById(prefix + '_street');
+      var communitySel = document.getElementById(prefix + '_community');
+      var manualInput = document.getElementById(prefix + '_manual');
+
+      Object.keys(addressTree).forEach(function (district) {
+        var opt = document.createElement('option');
+        opt.value = district;
+        opt.textContent = district;
+        districtSel.appendChild(opt);
+      });
+
+      districtSel.addEventListener('change', function () {
+        var district = districtSel.value;
+        resetSelect(streetSel, '请选择街道', true);
+        resetSelect(communitySel, '请选择小区', true);
+        manualInput.value = ''; // 互斥：选下拉则清空手动
+        if (!district) { updateDisplay(prefix); return; }
+        var streets = addressTree[district] || {};
+        Object.keys(streets).forEach(function (street) {
+          var opt = document.createElement('option');
+          opt.value = street;
+          opt.textContent = street;
+          streetSel.appendChild(opt);
+        });
+        streetSel.disabled = false;
+        updateDisplay(prefix);
+      });
+
+      streetSel.addEventListener('change', function () {
+        var district = districtSel.value;
+        var street = streetSel.value;
+        resetSelect(communitySel, '请选择小区', true);
+        manualInput.value = '';
+        if (!district || !street) { updateDisplay(prefix); return; }
+        var communities = addressTree[district][street] || [];
+        communities.forEach(function (c) {
+          var opt = document.createElement('option');
+          opt.value = c;
+          opt.textContent = c;
+          communitySel.appendChild(opt);
+        });
+        communitySel.disabled = false;
+        updateDisplay(prefix);
+      });
+
+      communitySel.addEventListener('change', function () {
+        manualInput.value = ''; // 互斥：选小区则清空手动
+        updateDisplay(prefix);
+      });
+
+      manualInput.addEventListener('input', function () {
+        if (manualInput.value.trim()) {
+          clearDropdown(prefix); // 互斥：手动输入则清空下拉
+        }
+      });
+    }
+
+    // ---------- 表单提交：写入 hidden 字段并校验 ----------
+    document.getElementById('plan-form').addEventListener('submit', function (e) {
+      // 1) 记忆高德 Key
+      try {
+        var keyInput = document.getElementById('amap_key');
+        var kv = keyInput.value.trim();
+        if (kv) {
+          sessionStorage.setItem('amap_key', kv);
+        } else {
+          sessionStorage.removeItem('amap_key');
+        }
+      } catch (err) {
+        // 忽略存储异常
+      }
+
+      // 2) 地址：下拉选中小区则优先（忽略手动输入）；未选中小区才读手动输入
+      ['origin', 'destination'].forEach(function (prefix) {
+        var community = getSelectedCommunity(prefix);
+        var manual = document.getElementById(prefix + '_manual').value.trim();
+        var hidden = document.getElementById(prefix);
+        hidden.value = community || manual;
+      });
+
+      // 3) 调试日志：打印提交前传给后端的真实字符串
+      console.log('origin_hidden =', document.getElementById('origin').value);
+      console.log('origin_manual =', document.getElementById('origin_manual').value);
+      console.log('destination_hidden =', document.getElementById('destination').value);
+      console.log('destination_manual =', document.getElementById('destination_manual').value);
+
+      // 4) 基础校验
+      var origin = document.getElementById('origin').value.trim();
+      var destination = document.getElementById('destination').value.trim();
+      if (!origin || !destination) {
+        e.preventDefault();
+        alert('请选择或手动输入出发地址与返回地址');
+      }
+    });
+
+    (async function () {
+      try {
+        var resp = await fetch('/api/address_tree');
+        addressTree = await resp.json();
+        initAddressGroup('origin');
+        initAddressGroup('destination');
+      } catch (e) {
+        console.error('加载三级联动地址数据失败', e);
+      }
+    })();
+  </script>
+</body>
+</html>

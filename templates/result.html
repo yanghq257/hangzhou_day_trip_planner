@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>路线规划结果</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .map-settings {
+      margin-bottom: 12px;
+    }
+    .map-settings summary {
+      cursor: pointer;
+      color: var(--primary);
+      font-size: 13px;
+    }
+    .map-settings-body {
+      margin-top: 10px;
+    }
+    .map-settings-body input[type="password"] {
+      width: 100%;
+      padding: 9px 10px;
+      font-size: 15px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    #map-container {
+      position: relative;
+    }
+    #map {
+      width: 100%;
+      height: 480px;
+      display: none;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .map-legend {
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+      z-index: 10;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+      color: var(--text);
+    }
+    .map-legend .legend-line {
+      display: inline-block;
+      width: 18px;
+      height: 4px;
+      border-radius: 2px;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+    .map-legend .legend-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>路线规划结果</h1>
+      <p class="subtitle">纯规则引擎生成 · 无大模型参与</p>
+    </header>
+
+    <div class="card summary">
+      <div class="summary-grid">
+        <div><span class="label">出发</span><strong>{{ plan.origin }}</strong></div>
+        <div><span class="label">返回</span><strong>{{ plan.destination }}</strong></div>
+        <div><span class="label">是否爬山</span><strong>{{ plan.hiking }}</strong></div>
+        <div><span class="label">总时长</span><strong>约 {{ plan.total_minutes }} 分钟</strong></div>
+        <div><span class="label">路上耗时</span><strong>约 {{ plan.travel_total }} 分钟</strong></div>
+        <div><span class="label">游玩时长</span><strong>约 {{ plan.visit_total }} 分钟</strong></div>
+      </div>
+    </div>
+
+    {% if plan.warnings %}
+    <div class="card">
+      <h2>风险校验提示</h2>
+      <ul class="warnings">
+        {% for w in plan.warnings %}<li>{{ w }}</li>{% endfor %}
+      </ul>
+    </div>
+    {% else %}
+    <div class="alert alert-success">各项校验通过，未发现明显风险。</div>
+    {% endif %}
+
+    <div class="card">
+      <h2>景点安排</h2>
+      <ol class="spot-list">
+        {% for p in plan.spots %}
+        <li>
+          <div class="spot-title">
+            <strong>{{ p.name }}</strong>
+            {% if p.is_hiking %}<span class="tag tag-hike">登山</span>{% endif %}
+            {% if p.is_water_island %}<span class="tag tag-boat">孤岛·游船</span>{% endif %}
+            <span class="muted">{{ p.visit_minutes }} 分钟</span>
+          </div>
+          <p class="desc">{{ p.description }}</p>
+        </li>
+        {% endfor %}
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2>完整时间轴</h2>
+      <div class="table-wrap">
+        <table class="timeline">
+          <thead>
+            <tr><th>时间</th><th>类型</th><th>内容</th><th>耗时</th></tr>
+          </thead>
+          <tbody>
+            {% for s in plan.timeline %}
+            <tr class="row-{{ s.get('类型') }}">
+              <td>{{ s.get('时间') }}{% if s.get('结束时间') %} - {{ s.get('结束时间') }}{% endif %}</td>
+              <td>{{ s.get('类型') }}</td>
+              <td>
+                {% if s.get('类型') == "交通" %}
+                  {{ s.get('起点') }} → {{ s.get('终点') }}（{{ s.get('方式') }}）
+                {% elif s.get('类型') == "活动" %}
+                  {{ s.get('地点') }}
+                  {% if s.get('是否登山') %}<span class="tag tag-hike">登山</span>{% endif %}
+                  {% if s.get('是否孤岛') %}<span class="tag tag-boat">孤岛</span>{% endif %}
+                {% else %}
+                  {{ s.get('地点') }}
+                {% endif %}
+              </td>
+              <td>{% if s.get('耗时分钟') %}{{ s.get('耗时分钟') }} 分钟{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>路线地图</h2>
+
+      <details class="map-settings">
+        <summary>地图高级设置（填写高德 JS API Key 启用动态地图，留空则显示静态图）</summary>
+        <div class="map-settings-body">
+          <input type="password" id="js_api_key" placeholder="高德 JS API Key（Web端 JS API）" autocomplete="off">
+          <button type="button" class="btn btn-ghost" id="init-map-btn">加载动态地图</button>
+        </div>
+      </details>
+
+      <div id="map-container">
+        <div id="static-map-wrap">
+          {% if plan.static_map_url %}
+          <img class="map" src="{{ plan.static_map_url }}" alt="路线地图">
+          {% else %}
+          <p class="muted">地图生成失败</p>
+          {% endif %}
+        </div>
+        <div id="map"></div>
+        <div class="map-legend">
+          <span><i class="legend-line" style="background:#888888;"></i>步行</span>
+          <span><i class="legend-line" style="background:#e53935;"></i>打车</span>
+          <span><i class="legend-line" style="background:#1e88e5;"></i>游船</span>
+          <span><i class="legend-dot" style="background:#2e7d32;"></i>登山点</span>
+        </div>
+      </div>
+    </div>
+
+    <a class="btn btn-primary btn-block" href="/">重新规划</a>
+  </div>
+
+  <script>
+    (function () {
+      var mapData = {
+        origin_lng: {{ plan.origin_lng | tojson }},
+        origin_lat: {{ plan.origin_lat | tojson }},
+        destination_lng: {{ plan.destination_lng | tojson }},
+        destination_lat: {{ plan.destination_lat | tojson }},
+        origin_name: {{ plan.origin | tojson }},
+        destination_name: {{ plan.destination | tojson }},
+        legs: {{ plan.legs | tojson }},
+        spots: {{ plan.spots | tojson }},
+        hiking_markers: {{ plan.hiking_markers | tojson }}
+      };
+
+      var MODE_COLORS = { '步行': '#888888', '打车': '#e53935', '游船': '#1e88e5' };
+      var map = null;
+      var infoWindow = null;
+
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+      }
+
+      function markerHTML(bg, label) {
+        return '<div style="background:' + bg + ';color:#fff;width:26px;height:26px;line-height:22px;text-align:center;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);font-size:12px;font-weight:bold;">' + label + '</div>';
+      }
+
+      function addMarker(lng, lat, title, desc, type) {
+        var bg, label;
+        if (type === 'start') { bg = '#0052d9'; label = '起'; }
+        else if (type === 'end') { bg = '#c62828'; label = '终'; }
+        else if (type === 'hiking') { bg = '#2e7d32'; label = '山'; }
+        else { bg = '#0f6fde'; label = '●'; }
+
+        var marker = new AMap.Marker({
+          position: [lng, lat],
+          content: markerHTML(bg, label),
+          offset: new AMap.Pixel(-13, -13)
+        });
+        marker.on('mouseover', function () {
+          var html = '<div style="max-width:240px;"><strong>' + esc(title) + '</strong>';
+          if (desc) html += '<div style="color:#555;font-size:12px;margin-top:2px;">' + esc(desc) + '</div>';
+          html += '</div>';
+          infoWindow.setContent(html);
+          infoWindow.open(map, marker.getPosition());
+        });
+        marker.on('mouseout', function () { infoWindow.close(); });
+        marker.setMap(map);
+      }
+
+      function drawLegs() {
+        (mapData.legs || []).forEach(function (leg) {
+          var path = (leg.polyline || []).map(function (p) { return [p[0], p[1]]; });
+          if (!path.length) return;
+          var polyline = new AMap.Polyline({
+            path: path,
+            strokeColor: MODE_COLORS[leg.mode] || '#888888',
+            strokeWeight: 5,
+            strokeOpacity: 0.85,
+            strokeStyle: 'solid',
+            lineJoin: 'round'
+          });
+          polyline.setMap(map);
+        });
+      }
+
+      function drawMarkers() {
+        addMarker(mapData.origin_lng, mapData.origin_lat, '起点：' + mapData.origin_name, '', 'start');
+        addMarker(mapData.destination_lng, mapData.destination_lat, '终点：' + mapData.destination_name, '', 'end');
+
+        var descByName = {};
+        (mapData.spots || []).forEach(function (s) { descByName[s.name] = s.description || ''; });
+
+        (mapData.spots || []).forEach(function (s) {
+          if (s.is_hiking) return; // 登山点由下方 hiking_markers 单独标记
+          addMarker(s.lng, s.lat, s.name, descByName[s.name], 'spot');
+        });
+
+        (mapData.hiking_markers || []).forEach(function (h) {
+          addMarker(h.lng, h.lat, h.name, descByName[h.name] || '登山景点', 'hiking');
+        });
+      }
+
+      function fitAll() {
+        var lngs = [], lats = [];
+        function push(lng, lat) { lngs.push(lng); lats.push(lat); }
+        push(mapData.origin_lng, mapData.origin_lat);
+        push(mapData.destination_lng, mapData.destination_lat);
+        (mapData.spots || []).forEach(function (s) { push(s.lng, s.lat); });
+        (mapData.legs || []).forEach(function (leg) {
+          (leg.polyline || []).forEach(function (p) { push(p[0], p[1]); });
+        });
+        if (!lngs.length) return;
+        var minLng = Math.min.apply(null, lngs);
+        var maxLng = Math.max.apply(null, lngs);
+        var minLat = Math.min.apply(null, lats);
+        var maxLat = Math.max.apply(null, lats);
+        map.setBounds(new AMap.Bounds([minLng, minLat], [maxLng, maxLat]), false, [60, 60, 60, 60]);
+      }
+
+      function initMap() {
+        map = new AMap.Map('map', { zoom: 12 });
+        infoWindow = new AMap.InfoWindow({ offset: new AMap.Pixel(0, -28), closeWhenClickMap: true });
+        drawLegs();
+        drawMarkers();
+        fitAll();
+      }
+
+      function loadAMap(key, cb) {
+        if (window.AMap) { cb(); return; }
+        var cbName = '_amapInit' + Date.now();
+        window[cbName] = function () {
+          try { cb(); } finally { delete window[cbName]; }
+        };
+        var s = document.createElement('script');
+        s.src = 'https://webapi.amap.com/maps?v=1.4.15&key=' + encodeURIComponent(key) + '&callback=' + cbName;
+        s.onerror = function () { alert('高德 JS API 加载失败，请检查 JS API Key 与网络'); };
+        document.head.appendChild(s);
+      }
+
+      document.getElementById('init-map-btn').addEventListener('click', function () {
+        var key = document.getElementById('js_api_key').value.trim();
+        if (!key) { alert('请先填写高德 JS API Key'); return; }
+        document.getElementById('static-map-wrap').style.display = 'none';
+        document.getElementById('map').style.display = 'block';
+        loadAMap(key, initMap);
+      });
+    })();
+  </script>
+</body>
+</html>

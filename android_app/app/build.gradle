@@ -1,0 +1,24 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.example.hangzhoutrip'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.example.hangzhoutrip"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // 使用 debug 签名，便于直接生成可安装的 release APK（无需配置 release keystore）
+            signingConfig signingConfigs.debug
+        }
+    }
+}
