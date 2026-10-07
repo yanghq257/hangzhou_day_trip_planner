@@ -93,9 +93,9 @@ async def plan(request: Request):
     try:
         count = int(count_raw)
     except ValueError:
-        return render_index("游玩景点数量必须是 2-6 之间的数字")
-    if not (2 <= count <= 6):
-        return render_index("游玩景点数量必须在 2-6 之间")
+        return render_index("游玩景点数量必须是 1-6 之间的数字")
+    if not (1 <= count <= 6):
+        return render_index("游玩景点数量必须在 1-6 之间")
     hiking_bool = hiking == "是"
     if not key:
         return render_index("请先填写高德 API Key，或设置环境变量 AMAP_KEY")
