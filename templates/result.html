@@ -329,7 +329,7 @@
 
       function autoFillJsApiKey() {
         try {
-          var savedJsKey = localStorage.getItem('amap_js_api_key');
+          var savedJsKey = localStorage.getItem('amap_js_api_key') || localStorage.getItem('amap_key');
           if (savedJsKey) {
             jsKeyInput.value = savedJsKey;
             if (jsKeySaveBox) jsKeySaveBox.checked = true;
@@ -349,7 +349,10 @@
 
       if (jsKeyClearBtn) {
         jsKeyClearBtn.addEventListener('click', function () {
-          try { localStorage.removeItem('amap_js_api_key'); } catch (e) {}
+          try {
+            localStorage.removeItem('amap_js_api_key');
+            localStorage.removeItem('amap_key');
+          } catch (e) {}
           jsKeyInput.value = '';
           if (jsKeySaveBox) jsKeySaveBox.checked = false;
           renderJsKeyHint('');
@@ -359,7 +362,10 @@
       if (jsKeySaveBox) {
         jsKeySaveBox.addEventListener('change', function () {
           if (!jsKeySaveBox.checked) {
-            try { localStorage.removeItem('amap_js_api_key'); } catch (e) {}
+            try {
+              localStorage.removeItem('amap_js_api_key');
+              localStorage.removeItem('amap_key');
+            } catch (e) {}
             renderJsKeyHint('');
           }
         });
@@ -371,9 +377,11 @@
         try {
           if (jsKeySaveBox && jsKeySaveBox.checked) {
             localStorage.setItem('amap_js_api_key', key);
+            localStorage.setItem('amap_key', key);
             renderJsKeyHint(key);
           } else {
             localStorage.removeItem('amap_js_api_key');
+            localStorage.removeItem('amap_key');
           }
         } catch (e) {
           // localStorage 不可用时静默忽略
