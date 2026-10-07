@@ -30,6 +30,7 @@ TRAVEL_RATIO_WARN = 0.8      # 路上耗时 / 游玩时长 超过 0.8 给出警�
 BOAT_MINUTES = 30            # 孤岛游船接驳估算耗时（分钟）
 DEFAULT_START_TIME = "09:00"
 HTTP_TIMEOUT = 10            # 请求高德接口超时（秒）
+CONNECTED_HIKING_MEMBERS = ("老和山", "北高峰")  # 连通登山线路成员（按山脊线串联）
 
 
 class PlanError(Exception):
@@ -140,6 +141,14 @@ PLACES = [
     {"name": "皋亭山", "lng": 120.2100, "lat": 30.3600, "is_hiking": True,
      "visit_minutes": 60, "is_water_island": False,
      "description": "城东北登山点，可俯瞰丁桥与半山。"},
+    {"name": "马家坞", "lng": 120.1111, "lat": 30.2590, "is_hiking": True,
+     "visit_minutes": 90, "is_water_island": False,
+     "description": "马家坞观景台（纳福云台），俯瞰西湖与杭城，与北高峰山脊线相连。",
+     "type": "登山",
+     "start_climb_point": "马家坞村口",
+     "hiking_route_desc": "马家坞村口沿石阶上山，经纳福云台后接入西湖群山西山游步道",
+     "end_climb_point": "北高峰",
+     "hiking_duration_min": 75},
 
     # ---- 观光 / 徒步 / 人文 ----
     {"name": "西湖断桥", "lng": 120.1510, "lat": 30.2590, "is_hiking": False,
@@ -157,6 +166,10 @@ PLACES = [
     {"name": "曲院风荷", "lng": 120.1260, "lat": 30.2500, "is_hiking": False,
      "visit_minutes": 60, "is_water_island": False,
      "description": "西湖十景之一，夏日荷花景观。"},
+    {"name": "玉泉", "lng": 120.1210, "lat": 30.2542, "is_hiking": False,
+     "visit_minutes": 45, "is_water_island": False,
+     "description": "杭州植物园内「玉泉鱼跃」，观鱼与园林景观结合。",
+     "type": "观光", "tags": ["观鱼", "植物园", "园林"]},
     {"name": "灵隐飞来峰", "lng": 120.1010, "lat": 30.2400, "is_hiking": False,
      "visit_minutes": 120, "is_water_island": False,
      "description": "千年古刹与石窟造像，人文底蕴深厚。"},
@@ -418,6 +431,40 @@ def match_place(query):
     return None
 
 
+def _merge_connected_hiking(spots):
+    """若同时勾选老和山与北高峰，则合并为一条连续登山线路（单一节点）。
+
+    保持纯规则引擎：仅当两者都显式必去时调用，供登山模式形成
+    「老和山 → 北高峰」山脊线连续穿越，不再产生两者间的步行/打车接驳。
+    """
+    names = [p["name"] for p in spots]
+    if not all(m in names for m in CONNECTED_HIKING_MEMBERS):
+        return spots
+
+    a = next(p for p in spots if p["name"] == CONNECTED_HIKING_MEMBERS[0])
+    b = next(p for p in spots if p["name"] == CONNECTED_HIKING_MEMBERS[1])
+    merged = {
+        "name": "老和山 → 北高峰，连续登山线路",
+        "lng": round((a["lng"] + b["lng"]) / 2, 6),
+        "lat": round((a["lat"] + b["lat"]) / 2, 6),
+        "is_hiking": True,
+        "visit_minutes": int(a["visit_minutes"]) + int(b["visit_minutes"]),
+        "is_water_island": False,
+        "description": "沿西湖群山西山游步道连续穿越老和山至北高峰，可远眺西溪湿地与西湖。",
+        "connected_hiking": True,
+        "members": list(CONNECTED_HIKING_MEMBERS),
+    }
+    out, inserted = [], False
+    for p in spots:
+        if p["name"] in CONNECTED_HIKING_MEMBERS:
+            if not inserted:
+                out.append(merged)
+                inserted = True
+            continue
+        out.append(p)
+    return out
+
+
 def _nearest(current, candidates):
     """从候选中找出离 current 最近的点。"""
     best, best_d = None, None
@@ -655,9 +702,17 @@ def plan_trip(origin_addr, destination_addr, hiking_bool, must_visit_raw, count,
     for name in unmatched:
         warnings.append(f"未能识别必去景点「{name}」，已忽略")
 
+    # 连通登山线路：登山模式下同时勾选老和山与北高峰时，合并为一条连续登山节点
+    if hiking_bool:
+        must_include = _merge_connected_hiking(must_include)
+
     # 3) 骨架排序 + 最近邻贪心补充
     route = _greedy_order(origin_geo, must_include)
     included = {p["name"] for p in route}
+    # 连通登山线路的成员点位视为已纳入，避免贪心补充时重复加入
+    for p in route:
+        for member_name in p.get("members") or []:
+            included.add(member_name)
     candidates = [p for p in pool if p["name"] not in included]
     current = route[-1] if route else origin_geo
 
@@ -715,12 +770,24 @@ def plan_trip(origin_addr, destination_addr, hiking_bool, must_visit_raw, count,
         }
         for leg in legs
     ]
-    # 景点库暂无上下口坐标，暂用景点自身坐标作为登山点位标记
-    hiking_markers = [
-        {"name": p["name"], "lng": p["lng"], "lat": p["lat"]}
-        for p in route
-        if p.get("is_hiking")
-    ]
+    # 景点库暂无上下口坐标，暂用景点自身坐标作为登山点位标记；
+    # 连通登山线路展开为其成员点位，保留老和山、北高峰两个标记
+    hiking_markers = []
+    for p in route:
+        if not p.get("is_hiking"):
+            continue
+        members = p.get("members") or []
+        if members:
+            for member_name in members:
+                src = PLACE_BY_NAME.get(member_name)
+                if src:
+                    hiking_markers.append({
+                        "name": src["name"],
+                        "lng": src["lng"],
+                        "lat": src["lat"],
+                    })
+        else:
+            hiking_markers.append({"name": p["name"], "lng": p["lng"], "lat": p["lat"]})
 
     return {
         "origin": origin_geo["formatted"],

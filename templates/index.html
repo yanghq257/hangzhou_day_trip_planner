@@ -46,6 +46,20 @@
       color: var(--muted);
       margin-bottom: 4px;
     }
+    .key-actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: 6px;
+    }
+    .key-actions label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--muted);
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -63,11 +77,16 @@
     {% endif %}
 
     <form method="post" action="/plan" class="card" id="plan-form">
-      <label class="field">
+      <div class="field">
         <span>高德 API Key</span>
         <input type="password" name="amap_key" id="amap_key" placeholder="可留空使用环境变量 AMAP_KEY" autocomplete="off">
+        <div class="key-actions">
+          <label><input type="checkbox" id="amap_key_save"> 保存到本机</label>
+          <button type="button" id="amap_key_clear" class="btn btn-ghost">清除</button>
+        </div>
         <p class="hint" id="amap_key_hint" style="display:none;">已保存本次会话高德Key，刷新页面无需重复填写</p>
-      </label>
+        <p class="hint" id="amap_key_local_hint" style="display:none;">已保存到本机（localStorage），下次打开自动填充</p>
+      </div>
 
       <div class="field">
         <span>出发地址</span>
@@ -156,18 +175,55 @@
       list.appendChild(input);
     }
 
-    // ---------- 高德 Key：sessionStorage 记忆，不显示明文 ----------
+    // ---------- 高德 Key：sessionStorage + localStorage 记忆，不显示明文 ----------
     (function () {
       var keyInput = document.getElementById('amap_key');
+      var saveBox = document.getElementById('amap_key_save');
+      var clearBtn = document.getElementById('amap_key_clear');
       var hint = document.getElementById('amap_key_hint');
+      var localHint = document.getElementById('amap_key_local_hint');
+
+      function renderHint(val, fromLocal) {
+        hint.style.display = val ? 'block' : 'none';
+        localHint.style.display = (val && fromLocal) ? 'block' : 'none';
+      }
+
       try {
-        var saved = sessionStorage.getItem('amap_key');
-        if (saved) {
-          keyInput.value = saved;
-          hint.style.display = 'block';
+        var local = localStorage.getItem('amap_key');
+        if (local) {
+          keyInput.value = local;
+          if (saveBox) saveBox.checked = true;
+          renderHint(local, true);
+        } else {
+          var session = sessionStorage.getItem('amap_key');
+          if (session) {
+            keyInput.value = session;
+            renderHint(session, false);
+          }
         }
       } catch (e) {
-        // sessionStorage 不可用时静默忽略
+        // 存储不可用时静默忽略
+      }
+
+      if (clearBtn) {
+        clearBtn.addEventListener('click', function () {
+          try {
+            localStorage.removeItem('amap_key');
+            sessionStorage.removeItem('amap_key');
+          } catch (e) {}
+          keyInput.value = '';
+          if (saveBox) saveBox.checked = false;
+          renderHint('', false);
+        });
+      }
+
+      if (saveBox) {
+        saveBox.addEventListener('change', function () {
+          if (!saveBox.checked) {
+            try { localStorage.removeItem('amap_key'); } catch (e) {}
+            localHint.style.display = 'none';
+          }
+        });
       }
     })();
 
@@ -281,14 +337,21 @@
 
     // ---------- 表单提交：写入 hidden 字段并校验 ----------
     document.getElementById('plan-form').addEventListener('submit', function (e) {
-      // 1) 记忆高德 Key
+      // 1) 记忆高德 Key：会话始终记住；仅勾选「保存到本机」时写入 localStorage
       try {
         var keyInput = document.getElementById('amap_key');
+        var saveBox = document.getElementById('amap_key_save');
         var kv = keyInput.value.trim();
         if (kv) {
           sessionStorage.setItem('amap_key', kv);
+          if (saveBox && saveBox.checked) {
+            localStorage.setItem('amap_key', kv);
+          } else {
+            localStorage.removeItem('amap_key');
+          }
         } else {
           sessionStorage.removeItem('amap_key');
+          localStorage.removeItem('amap_key');
         }
       } catch (err) {
         // 忽略存储异常
