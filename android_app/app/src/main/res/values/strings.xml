@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">杭州一日游</string>
-    <!-- TODO: 替换为 Render 公网域名，例如 https://your-app.onrender.com -->
-    <string name="app_url">https://YOUR-APP.onrender.com</string>
+    <!-- GitHub Pages 静态站点地址 -->
+    <string name="app_url">https://yanghq257.github.io/hangzhou_day_trip_planner/index.html</string>
 </resources>
