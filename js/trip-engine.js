@@ -20,6 +20,10 @@
     "上城区", "拱墅区", "西湖区", "滨江区", "余杭区",
     "萧山区", "临平区", "钱塘区", "下城区", "江干区"
   ]);
+  var HANGZHOU_DISTRICTS = new Set([
+    "上城区", "拱墅区", "西湖区", "滨江区", "余杭区",
+    "萧山区", "临平区", "钱塘区", "富阳区", "临安区"
+  ]);
   var WALK_LIMIT_MIN = 40;          // 步行超过 40 分钟禁止选用步行
   var BUFFER_FACTOR = 1.2;          // 交通耗时缓冲系数
   var MAX_TOTAL_MINUTES = 720;      // 总时长超过 12 小时给出警告
@@ -587,6 +591,13 @@
     return String(city);
   }
 
+  function _isHangzhouDistrict(name) {
+    var d = (name || '').trim();
+    if (!d) return false;
+    if (d.charAt(d.length - 1) !== '区') d += '区';
+    return HANGZHOU_DISTRICTS.has(d);
+  }
+
   function geocode(address, key) {
     return new Promise(function (resolve, reject) {
       if (!key) { reject(new PlanError('请先填写高德 API Key')); return; }
@@ -615,6 +626,11 @@
                 reject(new PlanError('地址坐标格式异常：' + address));
                 return;
               }
+              // 打印高德返回的 adcode / city / district，便于定位城市校验问题
+              console.log('[geocode] adcode:', g.adcode);
+              console.log('[geocode] city:', g.city);
+              console.log('[geocode] district:', g.district);
+
               var geo = {
                 formatted: g.formattedAddress || address,
                 lng: lng,
@@ -624,7 +640,12 @@
                 district: (typeof g.district === 'object' && g.district) ? (g.district.name || '') : (g.district || ''),
                 adcode: String(g.adcode || '')
               };
-              if (geo.city !== '杭州市') {
+
+              var cityOk = (geo.city === '杭州市');
+              var districtOk = _isHangzhouDistrict(geo.district);
+              console.log('[geocode] 城市校验 cityOk:', cityOk, 'districtOk:', districtOk, 'city:', geo.city, 'district:', geo.district, 'adcode:', geo.adcode);
+
+              if (!cityOk && !districtOk) {
                 reject(new PlanError('该地址不在杭州市范围内，请重新填写'));
                 return;
               }
