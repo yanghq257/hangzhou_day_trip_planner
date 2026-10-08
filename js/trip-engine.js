@@ -24,6 +24,7 @@
     "上城区", "拱墅区", "西湖区", "滨江区", "余杭区",
     "萧山区", "临平区", "钱塘区", "富阳区", "临安区"
   ]);
+  var HANGZHOU_ADCODE_PREFIX = "3301";
   var WALK_LIMIT_MIN = 40;          // 步行超过 40 分钟禁止选用步行
   var BUFFER_FACTOR = 1.2;          // 交通耗时缓冲系数
   var MAX_TOTAL_MINUTES = 720;      // 总时长超过 12 小时给出警告
@@ -643,9 +644,10 @@
 
               var cityOk = (geo.city === '杭州市');
               var districtOk = _isHangzhouDistrict(geo.district);
-              console.log('[geocode] 城市校验 cityOk:', cityOk, 'districtOk:', districtOk, 'city:', geo.city, 'district:', geo.district, 'adcode:', geo.adcode);
+              var adcodeOk = (String(geo.adcode || '').indexOf(HANGZHOU_ADCODE_PREFIX) === 0);
+              console.log('[geocode] 城市校验 cityOk:', cityOk, 'districtOk:', districtOk, 'adcodeOk:', adcodeOk, 'city:', geo.city, 'district:', geo.district, 'adcode:', geo.adcode);
 
-              if (!cityOk && !districtOk) {
+              if (!cityOk && !districtOk && !adcodeOk) {
                 reject(new PlanError('该地址不在杭州市范围内，请重新填写'));
                 return;
               }
