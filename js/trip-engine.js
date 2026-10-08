@@ -716,8 +716,32 @@
     return { duration_min: minutes, polyline: polyline };
   }
 
+  function withTimeout(promise, ms, message) {
+    var timeoutMessage = message || '请求超时';
+    return new Promise(function (resolve, reject) {
+      var settled = false;
+      var timer = setTimeout(function () {
+        if (settled) return;
+        settled = true;
+        console.error('[timeout] ' + timeoutMessage + '（' + ms + 'ms）');
+        reject(new PlanError(timeoutMessage));
+      }, ms);
+      promise.then(function (value) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(value);
+      }, function (err) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        reject(err);
+      });
+    });
+  }
+
   function amapWalking(lng1, lat1, lng2, lat2, key) {
-    return new Promise(function (resolve) {
+    return withTimeout(new Promise(function (resolve) {
       if (!global.AMap || !global.AMap.Walking) { resolve(null); return; }
       var walking = new global.AMap.Walking({});
       walking.search([lng1, lat1], [lng2, lat2], function (status, result) {
@@ -727,11 +751,11 @@
           resolve(null);
         }
       });
-    });
+    }), 8000, '步行路线请求超时');
   }
 
   function amapDriving(lng1, lat1, lng2, lat2, key) {
-    return new Promise(function (resolve) {
+    return withTimeout(new Promise(function (resolve) {
       if (!global.AMap || !global.AMap.Driving) { resolve(null); return; }
       var driving = new global.AMap.Driving({});
       driving.search([lng1, lat1], [lng2, lat2], function (status, result) {
@@ -741,7 +765,7 @@
           resolve(null);
         }
       });
-    });
+    }), 8000, '驾车路线请求超时');
   }
 
   // -------------------------------------------------------------------------
@@ -878,8 +902,18 @@
   function planTrip(originAddr, destinationAddr, hikingBool, mustVisitRaw, count, key) {
     if (!key) return Promise.reject(new PlanError('请先填写高德 API Key'));
 
-    return resolveAddress(originAddr, key).then(function (originGeo) {
+    console.log('[planTrip] 规划开始', {
+      origin: originAddr,
+      destination: destinationAddr,
+      hiking: hikingBool ? '是' : '否',
+      must_visit: mustVisitRaw,
+      count: count
+    });
+
+    var work = resolveAddress(originAddr, key).then(function (originGeo) {
+      console.log('[planTrip] 出发地址解析完成', { formatted: originGeo.formatted, lng: originGeo.lng, lat: originGeo.lat });
       return resolveAddress(destinationAddr, key).then(function (destGeo) {
+        console.log('[planTrip] 返回地址解析完成', { formatted: destGeo.formatted, lng: destGeo.lng, lat: destGeo.lat });
         return { originGeo: originGeo, destGeo: destGeo };
       });
     }).then(function (geo) {
@@ -916,6 +950,7 @@
       if (hikingBool) mustInc = mergeConnectedHiking(mustInc);
 
       var route = greedyOrder(originGeo, mustInc);
+      console.log('[planTrip] 必去景点合并后初始路径', route.map(function (p) { return p.name; }));
       var included = {};
       route.forEach(function (p) { included[p.name] = true; });
       route.forEach(function (p) {
@@ -942,6 +977,8 @@
         current = nxt;
       }
 
+      console.log('[planTrip] 景点筛选完成，最终景点数', route.length, route.map(function (p) { return p.name; }));
+
       if (route.length < count) {
         warnings.push('可安排景点数量不足：目标 ' + count + ' 个，实际安排 ' + route.length + ' 个');
       }
@@ -953,6 +990,7 @@
         var legs = legResult[0];
         var legWarnings = legResult[1];
         legWarnings.forEach(function (w) { warnings.push(w); });
+        console.log('[planTrip] 交通段计算完成', { legs: legs.length });
 
         var tl = buildTimeline(originGeo, destGeo, route, legs);
         var timeline = tl[0];
@@ -993,6 +1031,13 @@
           }
         });
 
+        console.log('[planTrip] 规划完成', {
+          spots: route.map(function (p) { return p.name; }),
+          total_minutes: totalMinutes,
+          travel_total: travelTotal,
+          visit_total: visitTotal
+        });
+
         return {
           origin: originGeo.formatted,
           destination: destGeo.formatted,
@@ -1012,6 +1057,11 @@
           hiking_markers: hikingMarkers
         };
       });
+    });
+
+    return withTimeout(work, 12000, '规划超时，请减少景点数量重试').catch(function (err) {
+      console.error('[planTrip] 规划异常', err);
+      throw err;
     });
   }
 

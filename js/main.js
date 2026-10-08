@@ -311,23 +311,32 @@
       }
 
       var submitBtn = form.querySelector('button[type="submit"]');
+
+      function resetSubmitBtn() {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '生成路线'; }
+      }
+
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '规划中…'; }
+      console.log('[main] 开始加载高德 SDK 并规划');
 
       loadAMapSDK(sdkKey, securityCode).then(function () {
+        console.log('[main] 高德 SDK 加载完成，开始 TripEngine.planTrip');
         return window.TripEngine.planTrip(origin, destination, hiking, mustVisit, count, sdkKey);
       }).then(function (plan) {
+        console.log('[main] 规划成功，写入 sessionStorage 并跳转');
         try {
           sessionStorage.setItem('trip_plan_result', JSON.stringify(plan));
         } catch (err) {
-          // 存储不可用时给出明确提示
-          showError('浏览器本地存储不可用，无法传递结果：' + (err && err.message ? err.message : err));
+          // 存储不可用时给出明确提示并恢复按钮
+          resetSubmitBtn();
+          alert('浏览器本地存储不可用，无法传递结果：' + (err && err.message ? err.message : err));
           return;
         }
         window.location.href = 'result.html';
       }).catch(function (err) {
-        showError(err && err.message ? err.message : String(err));
-      }).then(function () {
-        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '生成路线'; }
+        console.error('[main] 规划失败', err);
+        resetSubmitBtn();
+        alert(err && err.message ? err.message : String(err));
       });
     });
   }
