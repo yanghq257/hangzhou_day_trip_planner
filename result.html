@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>路线规划结果</title>
+  <link rel="stylesheet" href="static/style.css">
+  <style>
+    .map-settings {
+      margin-bottom: 12px;
+    }
+    .map-settings summary {
+      cursor: pointer;
+      color: var(--primary);
+      font-size: 13px;
+    }
+    .map-settings-body {
+      margin-top: 10px;
+    }
+    .map-settings-body input[type="password"] {
+      width: 100%;
+      padding: 9px 10px;
+      font-size: 15px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    #map-container {
+      position: relative;
+    }
+    #map {
+      width: 100%;
+      height: 480px;
+      display: none;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .map-legend {
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+      z-index: 10;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+      color: var(--text);
+    }
+    .map-legend .legend-line {
+      display: inline-block;
+      width: 18px;
+      height: 4px;
+      border-radius: 2px;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+    .map-legend .legend-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+    .key-actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 8px;
+    }
+    .key-actions label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--muted);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>路线规划结果</h1>
+      <p class="subtitle">纯规则引擎生成 · 无大模型参与 · 浏览器本地计算</p>
+    </header>
+
+    <div class="alert alert-error" id="no-plan" style="display:none;">
+      未找到行程结果，请先在<a href="index.html">规划页</a>生成路线。
+    </div>
+
+    <div class="card summary">
+      <div class="summary-grid">
+        <div><span class="label">出发</span><strong id="summary-origin">-</strong></div>
+        <div><span class="label">返回</span><strong id="summary-destination">-</strong></div>
+        <div><span class="label">是否爬山</span><strong id="summary-hiking">-</strong></div>
+        <div><span class="label">总时长</span><strong id="summary-total">-</strong></div>
+        <div><span class="label">路上耗时</span><strong id="summary-travel">-</strong></div>
+        <div><span class="label">游玩时长</span><strong id="summary-visit">-</strong></div>
+      </div>
+    </div>
+
+    <div class="card" id="warnings-card" style="display:none;">
+      <h2>风险校验提示</h2>
+      <ul class="warnings" id="warnings-list"></ul>
+    </div>
+    <div class="alert alert-success" id="success-alert" style="display:none;">各项校验通过，未发现明显风险。</div>
+
+    <div class="card">
+      <h2>景点安排</h2>
+      <ol class="spot-list" id="spot-list"></ol>
+    </div>
+
+    <div class="card">
+      <h2>完整时间轴</h2>
+      <div class="table-wrap">
+        <table class="timeline">
+          <thead>
+            <tr><th>时间</th><th>类型</th><th>内容</th><th>耗时</th></tr>
+          </thead>
+          <tbody id="timeline-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>路线地图</h2>
+
+      <details class="map-settings">
+        <summary>地图高级设置（填写高德 JS API Key 启用动态地图，留空则显示静态图）</summary>
+        <div class="map-settings-body">
+          <input type="password" id="js_api_key" placeholder="高德 JS API Key（Web端 JS API）" autocomplete="off">
+          <div class="key-actions">
+            <label><input type="checkbox" id="js_api_key_save"> 保存到本机</label>
+            <button type="button" class="btn btn-ghost" id="js_api_key_clear">清除</button>
+          </div>
+          <p class="hint" id="js_api_key_hint" style="display:none;">已保存到本机（localStorage），下次打开自动填充</p>
+          <button type="button" class="btn btn-ghost" id="init-map-btn">加载动态地图</button>
+        </div>
+      </details>
+
+      <div id="map-container">
+        <div id="static-map-wrap">
+          <img class="map" id="static-map-img" alt="路线地图" style="display:none;">
+          <p class="muted" id="static-map-fallback" style="display:none;">地图生成失败</p>
+        </div>
+        <div id="map"></div>
+        <div class="map-legend">
+          <span><i class="legend-line" style="background:#888888;"></i>步行</span>
+          <span><i class="legend-line" style="background:#e53935;"></i>打车</span>
+          <span><i class="legend-line" style="background:#1e88e5;"></i>游船</span>
+          <span><i class="legend-dot" style="background:#2e7d32;"></i>登山点</span>
+        </div>
+      </div>
+    </div>
+
+    <a class="btn btn-primary btn-block" href="index.html">重新规划</a>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+      }
+
+      // ---------- 读取本地计算结果 ----------
+      var plan = null;
+      try {
+        var raw = sessionStorage.getItem('trip_plan_result');
+        if (raw) plan = JSON.parse(raw);
+      } catch (e) {
+        plan = null;
+      }
+
+      if (!plan) {
+        document.getElementById('no-plan').style.display = 'block';
+        return;
+      }
+
+      // ---------- 渲染摘要 ----------
+      document.getElementById('summary-origin').textContent = plan.origin;
+      document.getElementById('summary-destination').textContent = plan.destination;
+      document.getElementById('summary-hiking').textContent = plan.hiking;
+      document.getElementById('summary-total').textContent = '约 ' + plan.total_minutes + ' 分钟';
+      document.getElementById('summary-travel').textContent = '约 ' + plan.travel_total + ' 分钟';
+      document.getElementById('summary-visit').textContent = '约 ' + plan.visit_total + ' 分钟';
+
+      // ---------- 渲染风险提示 ----------
+      if (plan.warnings && plan.warnings.length) {
+        document.getElementById('warnings-card').style.display = 'block';
+        var wl = document.getElementById('warnings-list');
+        plan.warnings.forEach(function (w) {
+          var li = document.createElement('li');
+          li.textContent = w;
+          wl.appendChild(li);
+        });
+      } else {
+        document.getElementById('success-alert').style.display = 'block';
+      }
+
+      // ---------- 渲染景点 ----------
+      var spotList = document.getElementById('spot-list');
+      (plan.spots || []).forEach(function (p) {
+        var li = document.createElement('li');
+        var title = document.createElement('div');
+        title.className = 'spot-title';
+        title.innerHTML =
+          '<strong>' + esc(p.name) + '</strong>' +
+          (p.is_hiking ? '<span class="tag tag-hike">登山</span>' : '') +
+          (p.is_water_island ? '<span class="tag tag-boat">孤岛·游船</span>' : '') +
+          '<span class="muted">' + esc(p.visit_minutes) + ' 分钟</span>';
+        var desc = document.createElement('p');
+        desc.className = 'desc';
+        desc.textContent = p.description || '';
+        li.appendChild(title);
+        li.appendChild(desc);
+        spotList.appendChild(li);
+      });
+
+      // ---------- 渲染时间轴 ----------
+      var tbody = document.getElementById('timeline-body');
+      (plan.timeline || []).forEach(function (s) {
+        var tr = document.createElement('tr');
+        tr.className = 'row-' + (s['类型'] || '');
+
+        var tdTime = document.createElement('td');
+        var timeText = s['时间'] || '';
+        if (s['结束时间']) timeText += ' - ' + s['结束时间'];
+        tdTime.textContent = timeText;
+
+        var tdType = document.createElement('td');
+        tdType.textContent = s['类型'] || '';
+
+        var tdContent = document.createElement('td');
+        if (s['类型'] === '交通') {
+          tdContent.textContent = (s['起点'] || '') + ' → ' + (s['终点'] || '') + '（' + (s['方式'] || '') + '）';
+        } else if (s['类型'] === '活动') {
+          tdContent.textContent = s['地点'] || '';
+          if (s['是否登山']) {
+            var tagHike = document.createElement('span');
+            tagHike.className = 'tag tag-hike';
+            tagHike.textContent = '登山';
+            tdContent.appendChild(document.createTextNode(' '));
+            tdContent.appendChild(tagHike);
+          }
+          if (s['是否孤岛']) {
+            var tagBoat = document.createElement('span');
+            tagBoat.className = 'tag tag-boat';
+            tagBoat.textContent = '孤岛';
+            tdContent.appendChild(document.createTextNode(' '));
+            tdContent.appendChild(tagBoat);
+          }
+        } else {
+          tdContent.textContent = s['地点'] || '';
+        }
+
+        var tdCost = document.createElement('td');
+        tdCost.textContent = s['耗时分钟'] ? (s['耗时分钟'] + ' 分钟') : '';
+
+        tr.appendChild(tdTime);
+        tr.appendChild(tdType);
+        tr.appendChild(tdContent);
+        tr.appendChild(tdCost);
+        tbody.appendChild(tr);
+      });
+
+      // ---------- 静态地图 ----------
+      if (plan.static_map_url) {
+        document.getElementById('static-map-img').src = plan.static_map_url;
+        document.getElementById('static-map-img').style.display = 'block';
+      } else {
+        document.getElementById('static-map-fallback').style.display = 'block';
+      }
+
+      // ---------- 动态地图 ----------
+      var mapData = {
+        origin_lng: plan.origin_lng,
+        origin_lat: plan.origin_lat,
+        destination_lng: plan.destination_lng,
+        destination_lat: plan.destination_lat,
+        origin_name: plan.origin,
+        destination_name: plan.destination,
+        legs: plan.legs || [],
+        spots: plan.spots || [],
+        hiking_markers: plan.hiking_markers || []
+      };
+
+      var MODE_COLORS = { '步行': '#888888', '打车': '#e53935', '游船': '#1e88e5' };
+      var map = null;
+      var infoWindow = null;
+
+      function markerHTML(bg, label) {
+        return '<div style="background:' + bg + ';color:#fff;width:26px;height:26px;line-height:22px;text-align:center;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);font-size:12px;font-weight:bold;">' + label + '</div>';
+      }
+
+      function addMarker(lng, lat, title, desc, type) {
+        var bg, label;
+        if (type === 'start') { bg = '#0052d9'; label = '起'; }
+        else if (type === 'end') { bg = '#c62828'; label = '终'; }
+        else if (type === 'hiking') { bg = '#2e7d32'; label = '山'; }
+        else { bg = '#0f6fde'; label = '●'; }
+
+        var marker = new AMap.Marker({
+          position: [lng, lat],
+          content: markerHTML(bg, label),
+          offset: new AMap.Pixel(-13, -13)
+        });
+        marker.on('mouseover', function () {
+          var html = '<div style="max-width:240px;"><strong>' + esc(title) + '</strong>';
+          if (desc) html += '<div style="color:#555;font-size:12px;margin-top:2px;">' + esc(desc) + '</div>';
+          html += '</div>';
+          infoWindow.setContent(html);
+          infoWindow.open(map, marker.getPosition());
+        });
+        marker.on('mouseout', function () { infoWindow.close(); });
+        marker.setMap(map);
+      }
+
+      function drawLegs() {
+        mapData.legs.forEach(function (leg) {
+          var path = (leg.polyline || []).map(function (p) { return [p[0], p[1]]; });
+          if (!path.length) return;
+          var polyline = new AMap.Polyline({
+            path: path,
+            strokeColor: MODE_COLORS[leg.mode] || '#888888',
+            strokeWeight: 5,
+            strokeOpacity: 0.85,
+            strokeStyle: 'solid',
+            lineJoin: 'round'
+          });
+          polyline.setMap(map);
+        });
+      }
+
+      function drawMarkers() {
+        addMarker(mapData.origin_lng, mapData.origin_lat, '起点：' + mapData.origin_name, '', 'start');
+        addMarker(mapData.destination_lng, mapData.destination_lat, '终点：' + mapData.destination_name, '', 'end');
+
+        var descByName = {};
+        mapData.spots.forEach(function (s) { descByName[s.name] = s.description || ''; });
+
+        mapData.spots.forEach(function (s) {
+          if (s.is_hiking) return;
+          addMarker(s.lng, s.lat, s.name, descByName[s.name], 'spot');
+        });
+
+        mapData.hiking_markers.forEach(function (h) {
+          addMarker(h.lng, h.lat, h.name, descByName[h.name] || '登山景点', 'hiking');
+        });
+      }
+
+      function fitAll() {
+        var lngs = [], lats = [];
+        function push(lng, lat) { lngs.push(lng); lats.push(lat); }
+        push(mapData.origin_lng, mapData.origin_lat);
+        push(mapData.destination_lng, mapData.destination_lat);
+        mapData.spots.forEach(function (s) { push(s.lng, s.lat); });
+        mapData.legs.forEach(function (leg) {
+          (leg.polyline || []).forEach(function (p) { push(p[0], p[1]); });
+        });
+        if (!lngs.length) return;
+        var minLng = Math.min.apply(null, lngs);
+        var maxLng = Math.max.apply(null, lngs);
+        var minLat = Math.min.apply(null, lats);
+        var maxLat = Math.max.apply(null, lats);
+        map.setBounds(new AMap.Bounds([minLng, minLat], [maxLng, maxLat]), false, [60, 60, 60, 60]);
+      }
+
+      function initMap() {
+        map = new AMap.Map('map', { zoom: 12 });
+        infoWindow = new AMap.InfoWindow({ offset: new AMap.Pixel(0, -28), closeWhenClickMap: true });
+        drawLegs();
+        drawMarkers();
+        fitAll();
+      }
+
+      function loadAMap(key, cb) {
+        if (window.AMap) { cb(); return; }
+        var cbName = '_amapInit' + Date.now();
+        window[cbName] = function () {
+          try { cb(); } finally { try { delete window[cbName]; } catch (e) {} }
+        };
+        var s = document.createElement('script');
+        s.src = 'https://webapi.amap.com/maps?v=1.4.15&key=' + encodeURIComponent(key) + '&callback=' + cbName;
+        s.onerror = function () { alert('高德 JS API 加载失败，请检查 JS API Key 与网络'); };
+        document.head.appendChild(s);
+      }
+
+      // ---------- JS API Key 记忆 ----------
+      var jsKeyInput = document.getElementById('js_api_key');
+      var jsKeySaveBox = document.getElementById('js_api_key_save');
+      var jsKeyClearBtn = document.getElementById('js_api_key_clear');
+      var jsKeyHint = document.getElementById('js_api_key_hint');
+
+      function renderJsKeyHint(val) {
+        jsKeyHint.style.display = val ? 'block' : 'none';
+      }
+
+      function autoFillJsApiKey() {
+        try {
+          var savedJsKey = localStorage.getItem('amap_js_api_key') || localStorage.getItem('amap_key');
+          if (savedJsKey) {
+            jsKeyInput.value = savedJsKey;
+            if (jsKeySaveBox) jsKeySaveBox.checked = true;
+            renderJsKeyHint(savedJsKey);
+          }
+        } catch (e) {}
+      }
+      autoFillJsApiKey();
+
+      jsKeyClearBtn.addEventListener('click', function () {
+        try {
+          localStorage.removeItem('amap_js_api_key');
+          localStorage.removeItem('amap_key');
+        } catch (e) {}
+        jsKeyInput.value = '';
+        jsKeySaveBox.checked = false;
+        renderJsKeyHint('');
+      });
+
+      jsKeySaveBox.addEventListener('change', function () {
+        if (!jsKeySaveBox.checked) {
+          try {
+            localStorage.removeItem('amap_js_api_key');
+            localStorage.removeItem('amap_key');
+          } catch (e) {}
+          renderJsKeyHint('');
+        }
+      });
+
+      document.getElementById('init-map-btn').addEventListener('click', function () {
+        var key = jsKeyInput.value.trim();
+        if (!key) { alert('请先填写高德 JS API Key'); return; }
+        try {
+          if (jsKeySaveBox.checked) {
+            localStorage.setItem('amap_js_api_key', key);
+            localStorage.setItem('amap_key', key);
+            renderJsKeyHint(key);
+          } else {
+            localStorage.removeItem('amap_js_api_key');
+            localStorage.removeItem('amap_key');
+          }
+        } catch (e) {}
+        document.getElementById('static-map-wrap').style.display = 'none';
+        document.getElementById('map').style.display = 'block';
+        loadAMap(key, initMap);
+      });
+    })();
+  </script>
+</body>
+</html>

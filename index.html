@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>杭州一日路线规划器</title>
+  <link rel="stylesheet" href="static/style.css">
+  <style>
+    /* 仅前端 UI：同一组地址的三级下拉放在同一个边框主容器内 */
+    .cascade-box {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      background: #fafbfc;
+      margin-bottom: 8px;
+    }
+    .cascade-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .cascade-row select.cascade {
+      flex: 1 1 150px;
+      margin-bottom: 0;
+    }
+    .selected-address {
+      min-height: 38px;
+      padding: 9px 12px;
+      margin-bottom: 10px;
+      background: #fff;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      color: var(--text);
+      word-break: break-all;
+    }
+    .selected-address.empty {
+      color: var(--muted);
+    }
+    .manual-address {
+      margin-top: 4px;
+    }
+    .manual-address .manual-title {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .key-actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: 6px;
+    }
+    .key-actions label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--muted);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>杭州主城区游玩锻炼一日路线规划器</h1>
+      <p class="subtitle">纯规则引擎 · 不调用任何大模型 · 高德 JS API + 内置景点库 · 浏览器本地计算</p>
+    </header>
+
+    <div class="alert alert-error" id="form-error" style="display:none;"></div>
+
+    <form class="card" id="plan-form">
+      <div class="field">
+        <span>高德 Web 服务 API Key（用于静态地图）</span>
+        <input type="password" name="amap_key" id="amap_key" placeholder="选填，用于生成静态地图" autocomplete="off">
+      </div>
+
+      <div class="field">
+        <span>高德 JS API Key（用于路线计算与动态地图）</span>
+        <input type="password" name="amap_js_api_key" id="amap_js_api_key" placeholder="必填，用于地理编码与步行/驾车路径" autocomplete="off">
+        <div class="key-actions">
+          <label><input type="checkbox" id="save_keys"> 保存到本机</label>
+          <button type="button" id="keys_clear" class="btn btn-ghost">清除</button>
+        </div>
+        <p class="hint" id="keys_hint" style="display:none;">已保存到本机（localStorage），下次打开自动填充</p>
+      </div>
+
+      <div class="field">
+        <span>出发地址</span>
+        <div class="cascade-box">
+          <div class="selected-address empty" id="origin_display">未选择（请通过下方下拉选择小区）</div>
+          <div class="cascade-row">
+            <select id="origin_district" class="cascade">
+              <option value="">请选择主城区</option>
+            </select>
+            <select id="origin_street" class="cascade" disabled>
+              <option value="">请选择街道</option>
+            </select>
+            <select id="origin_community" class="cascade" disabled>
+              <option value="">请选择小区</option>
+            </select>
+          </div>
+        </div>
+        <div class="manual-address">
+          <span class="manual-title">手动输入自定义地址（选填，与下拉互斥）</span>
+          <input type="text" id="origin_manual" placeholder="例如：杭州市西湖区中杭府" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="field">
+        <span>返回地址</span>
+        <div class="cascade-box">
+          <div class="selected-address empty" id="destination_display">未选择（请通过下方下拉选择小区）</div>
+          <div class="cascade-row">
+            <select id="destination_district" class="cascade">
+              <option value="">请选择主城区</option>
+            </select>
+            <select id="destination_street" class="cascade" disabled>
+              <option value="">请选择街道</option>
+            </select>
+            <select id="destination_community" class="cascade" disabled>
+              <option value="">请选择小区</option>
+            </select>
+          </div>
+        </div>
+        <div class="manual-address">
+          <span class="manual-title">手动输入自定义地址（选填，与下拉互斥）</span>
+          <input type="text" id="destination_manual" placeholder="可与出发地址相同" autocomplete="off">
+        </div>
+      </div>
+
+      <fieldset class="field">
+        <legend>是否爬山</legend>
+        <div class="radio-row">
+          <label><input type="radio" name="hiking" value="是" checked> 是</label>
+          <label><input type="radio" name="hiking" value="否"> 否</label>
+        </div>
+      </fieldset>
+
+      <div class="field">
+        <span>必去景点（可多条，0 条也允许）</span>
+        <div id="must-visit-list">
+          <input type="text" name="must_visit" value="" placeholder="例如：龙井村">
+        </div>
+        <button type="button" class="btn btn-ghost" onclick="addMustVisit()">+ 添加必去景点</button>
+      </div>
+
+      <label class="field">
+        <span>游玩景点数量（1-6）</span>
+        <input type="number" name="count" id="count" min="1" max="6" value="3" required>
+      </label>
+
+      <button type="submit" class="btn btn-primary">生成路线</button>
+    </form>
+  </div>
+
+  <script>
+    function addMustVisit() {
+      var list = document.getElementById('must-visit-list');
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.name = 'must_visit';
+      input.placeholder = '例如：三潭印月';
+      list.appendChild(input);
+    }
+  </script>
+  <script src="js/trip-engine.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
