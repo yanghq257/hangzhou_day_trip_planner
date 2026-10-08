@@ -228,7 +228,7 @@
         }
       };
       var s = document.createElement('script');
-      s.src = 'https://webapi.amap.com/maps?v=1.4.15&key=' + encodeURIComponent(key) +
+      s.src = 'https://webapi.amap.com/maps?v=2.0&key=' + encodeURIComponent(key) +
         '&callback=' + cbName + '&plugin=AMap.Geocoder,AMap.Walking,AMap.Driving';
       s.onerror = function () {
         try { delete window[cbName]; } catch (e) {}
