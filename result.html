@@ -131,11 +131,13 @@
       <h2>路线地图</h2>
 
       <details class="map-settings">
-        <summary>地图设置（高德 JS API Key）</summary>
+        <summary>地图设置（高德 JS API Key + 安全密钥）</summary>
         <div class="map-settings-body">
           <input type="password" id="js_api_key" placeholder="高德 JS API Key（Web端 JS API）" autocomplete="off">
+          <input type="password" id="js_security_code" placeholder="高德安全密钥（securityJsCode）" autocomplete="off">
           <div class="key-actions">
-            <label><input type="checkbox" id="js_api_key_save"> 保存到本机</label>
+            <label><input type="checkbox" id="js_api_key_save"> 保存 Key 到本机</label>
+            <label><input type="checkbox" id="js_security_code_save"> 保存安全密钥到本机</label>
             <button type="button" class="btn btn-ghost" id="js_api_key_clear">清除</button>
           </div>
           <p class="hint" id="js_api_key_hint" style="display:none;">已保存到本机（localStorage），下次打开自动填充</p>
@@ -370,8 +372,11 @@
         fitAll();
       }
 
-      function loadAMap(key, cb) {
+      function loadAMap(key, securityCode, cb) {
         if (window.AMap) { cb(); return; }
+        if (securityCode) {
+          window._AMapSecurityConfig = { securityJsCode: securityCode };
+        }
         var cbName = '_amapInit' + Date.now();
         window[cbName] = function () {
           try { cb(); } finally { try { delete window[cbName]; } catch (e) {} }
@@ -382,41 +387,56 @@
         document.head.appendChild(s);
       }
 
-      // ---------- JS API Key 记忆 ----------
+      // ---------- JS API Key + 安全密钥 记忆 ----------
       var jsKeyInput = document.getElementById('js_api_key');
+      var jsSecurityInput = document.getElementById('js_security_code');
       var jsKeySaveBox = document.getElementById('js_api_key_save');
+      var jsSecuritySaveBox = document.getElementById('js_security_code_save');
       var jsKeyClearBtn = document.getElementById('js_api_key_clear');
       var jsKeyHint = document.getElementById('js_api_key_hint');
 
-      function renderJsKeyHint(val) {
-        jsKeyHint.style.display = val ? 'block' : 'none';
+      function renderJsKeyHint() {
+        var saved = false;
+        try {
+          saved = !!(localStorage.getItem('amap_js_api_key') || localStorage.getItem('amap_js_security_code'));
+        } catch (e) {}
+        jsKeyHint.style.display = saved ? 'block' : 'none';
       }
 
-      function autoFillJsApiKey() {
+      function autoFillKeys() {
         try {
           var savedJsKey = localStorage.getItem('amap_js_api_key') || sessionStorage.getItem('amap_js_api_key');
+          var savedSecurityCode = localStorage.getItem('amap_js_security_code') || sessionStorage.getItem('amap_js_security_code');
           if (savedJsKey) {
             jsKeyInput.value = savedJsKey;
             if (jsKeySaveBox) jsKeySaveBox.checked = true;
-            renderJsKeyHint(savedJsKey);
           }
+          if (savedSecurityCode) {
+            jsSecurityInput.value = savedSecurityCode;
+            if (jsSecuritySaveBox) jsSecuritySaveBox.checked = true;
+          }
+          renderJsKeyHint();
         } catch (e) {}
       }
-      autoFillJsApiKey();
+      autoFillKeys();
 
-      if (jsKeyInput.value.trim()) {
+      if (jsKeyInput.value.trim() && jsSecurityInput.value.trim()) {
         document.getElementById('map').style.display = 'block';
-        loadAMap(jsKeyInput.value.trim(), initMap);
+        loadAMap(jsKeyInput.value.trim(), jsSecurityInput.value.trim(), initMap);
       }
 
       jsKeyClearBtn.addEventListener('click', function () {
         try {
           localStorage.removeItem('amap_js_api_key');
           sessionStorage.removeItem('amap_js_api_key');
+          localStorage.removeItem('amap_js_security_code');
+          sessionStorage.removeItem('amap_js_security_code');
         } catch (e) {}
         jsKeyInput.value = '';
+        jsSecurityInput.value = '';
         jsKeySaveBox.checked = false;
-        renderJsKeyHint('');
+        jsSecuritySaveBox.checked = false;
+        renderJsKeyHint();
       });
 
       jsKeySaveBox.addEventListener('change', function () {
@@ -424,24 +444,40 @@
           try {
             localStorage.removeItem('amap_js_api_key');
           } catch (e) {}
-          renderJsKeyHint('');
+          renderJsKeyHint();
+        }
+      });
+
+      jsSecuritySaveBox.addEventListener('change', function () {
+        if (!jsSecuritySaveBox.checked) {
+          try {
+            localStorage.removeItem('amap_js_security_code');
+          } catch (e) {}
+          renderJsKeyHint();
         }
       });
 
       document.getElementById('init-map-btn').addEventListener('click', function () {
         var key = jsKeyInput.value.trim();
-        if (!key) { alert('请先填写高德 JS API Key'); return; }
+        var securityCode = jsSecurityInput.value.trim();
+        if (!key || !securityCode) { alert('请填写高德JS API Key 和安全密钥'); return; }
         try {
           sessionStorage.setItem('amap_js_api_key', key);
+          sessionStorage.setItem('amap_js_security_code', securityCode);
           if (jsKeySaveBox.checked) {
             localStorage.setItem('amap_js_api_key', key);
-            renderJsKeyHint(key);
           } else {
             localStorage.removeItem('amap_js_api_key');
           }
+          if (jsSecuritySaveBox.checked) {
+            localStorage.setItem('amap_js_security_code', securityCode);
+          } else {
+            localStorage.removeItem('amap_js_security_code');
+          }
+          renderJsKeyHint();
         } catch (e) {}
         document.getElementById('map').style.display = 'block';
-        loadAMap(key, initMap);
+        loadAMap(key, securityCode, initMap);
       });
     })();
   </script>

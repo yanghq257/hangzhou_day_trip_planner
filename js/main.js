@@ -3,7 +3,7 @@
  *
  * 职责：
  *   1. 用内嵌的 DISTRICT_STREET_COMMUNITY 填充三级联动地址选择器；
- *   2. 管理 amap_js_api_key（JS API）的 localStorage/sessionStorage 回填；
+ *   2. 管理 amap_js_api_key（JS API Key）与 amap_js_security_code（安全密钥）的 localStorage/sessionStorage 回填；
  *   3. 动态加载高德 JS API 1.4.15（含 Geocoder / Walking / Driving 插件）；
  *   4. 拦截表单提交，浏览器本地执行 TripEngine.planTrip()，结果写入 sessionStorage 后跳转 result.html。
  */
@@ -23,7 +23,7 @@
   }
 
   // -------------------------------------------------------------------------
-  // 高德 Key：仅 amap_js_api_key（JS API）
+  // 高德密钥：amap_js_api_key（JS API Key）+ amap_js_security_code（安全密钥）
   // 保留跨页同步回填逻辑：localStorage 优先，sessionStorage 兜底
   // -------------------------------------------------------------------------
   function storageGet(key) {
@@ -47,10 +47,11 @@
 
   function initKeys() {
     var jsInput = $('amap_js_api_key');
+    var secInput = $('amap_js_security_code');
     var saveBox = $('save_keys');
 
     function renderHint() {
-      var saved = !!storageGet('amap_js_api_key');
+      var saved = !!(storageGet('amap_js_api_key') || storageGet('amap_js_security_code'));
       var hint = $('keys_hint');
       if (hint) hint.style.display = saved ? 'block' : 'none';
       if (saveBox) saveBox.checked = saved;
@@ -61,13 +62,20 @@
     var jsSession = sessionGet('amap_js_api_key');
     if (jsInput) jsInput.value = jsLocal || jsSession || '';
 
+    var secLocal = storageGet('amap_js_security_code');
+    var secSession = sessionGet('amap_js_security_code');
+    if (secInput) secInput.value = secLocal || secSession || '';
+
     renderHint();
 
     if ($('keys_clear')) {
       $('keys_clear').addEventListener('click', function () {
         storageRemove('amap_js_api_key');
         sessionRemove('amap_js_api_key');
+        storageRemove('amap_js_security_code');
+        sessionRemove('amap_js_security_code');
         if (jsInput) jsInput.value = '';
+        if (secInput) secInput.value = '';
         renderHint();
       });
     }
@@ -76,6 +84,7 @@
       saveBox.addEventListener('change', function () {
         if (!saveBox.checked) {
           storageRemove('amap_js_api_key');
+          storageRemove('amap_js_security_code');
           renderHint();
         }
       });
@@ -198,11 +207,14 @@
   // -------------------------------------------------------------------------
   // 高德 JS SDK 动态加载（含 Geocoder / Walking / Driving 插件）
   // -------------------------------------------------------------------------
-  function loadAMapSDK(key) {
+  function loadAMapSDK(key, securityCode) {
     return new Promise(function (resolve, reject) {
       if (window.AMap && window.AMap.Geocoder && window.AMap.Walking && window.AMap.Driving) {
         resolve();
         return;
+      }
+      if (securityCode) {
+        window._AMapSecurityConfig = { securityJsCode: securityCode };
       }
       var cbName = '_amapReady' + Date.now();
       window[cbName] = function () {
@@ -238,9 +250,10 @@
       showError('');
 
       var jsKey = ($('amap_js_api_key').value || '').trim();
+      var securityCode = ($('amap_js_security_code').value || '').trim();
       var saveBox = $('save_keys');
 
-      // 记忆 Key：会话始终记住；勾选「保存到本机」时写入 localStorage
+      // 记忆 Key 与安全密钥：会话始终记住；勾选「保存到本机」时写入 localStorage
       if (jsKey) {
         sessionSet('amap_js_api_key', jsKey);
         if (saveBox && saveBox.checked) storageSet('amap_js_api_key', jsKey);
@@ -248,6 +261,14 @@
       } else {
         sessionRemove('amap_js_api_key');
         storageRemove('amap_js_api_key');
+      }
+      if (securityCode) {
+        sessionSet('amap_js_security_code', securityCode);
+        if (saveBox && saveBox.checked) storageSet('amap_js_security_code', securityCode);
+        else storageRemove('amap_js_security_code');
+      } else {
+        sessionRemove('amap_js_security_code');
+        storageRemove('amap_js_security_code');
       }
 
       // 地址：下拉选中则拼接「区+街道+社区」完整地址；未选中才读手动输入
@@ -282,17 +303,17 @@
         if (v) mustVisit.push(v);
       }
 
-      // SDK 需要 JS API Key
+      // SDK 需要 JS API Key + 安全密钥
       var sdkKey = jsKey;
-      if (!sdkKey) {
-        showError('请先填写高德 JS API Key');
+      if (!sdkKey || !securityCode) {
+        showError('请填写高德JS API Key 和安全密钥');
         return;
       }
 
       var submitBtn = form.querySelector('button[type="submit"]');
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '规划中…'; }
 
-      loadAMapSDK(sdkKey).then(function () {
+      loadAMapSDK(sdkKey, securityCode).then(function () {
         return window.TripEngine.planTrip(origin, destination, hiking, mustVisit, count, sdkKey);
       }).then(function (plan) {
         try {

@@ -61,6 +61,15 @@
       cursor: pointer;
     }
   </style>
+  <script type="text/javascript">
+    (function () {
+      var code = '';
+      try { code = localStorage.getItem('amap_js_security_code') || ''; } catch (e) {}
+      if (code) {
+        window._AMapSecurityConfig = { securityJsCode: code };
+      }
+    })();
+  </script>
 </head>
 <body>
   <div class="container">
@@ -75,8 +84,10 @@
       <div class="field">
         <span>高德 JS API Key（用于地理编码、路线计算与地图渲染）</span>
         <input type="password" name="amap_js_api_key" id="amap_js_api_key" placeholder="必填，用于地理编码与步行/驾车路径" autocomplete="off">
+        <span>高德安全密钥（securityJsCode，配合 JS API Key 使用）</span>
+        <input type="password" name="amap_js_security_code" id="amap_js_security_code" placeholder="必填，高德 JS API 2.0 安全密钥" autocomplete="off">
         <div class="key-actions">
-          <label><input type="checkbox" id="save_keys"> 保存到本机</label>
+          <label><input type="checkbox" id="save_keys"> 保存到本机（Key + 安全密钥）</label>
           <button type="button" id="keys_clear" class="btn btn-ghost">清除</button>
         </div>
         <p class="hint" id="keys_hint" style="display:none;">已保存到本机（localStorage），下次打开自动填充</p>
