@@ -4,8 +4,8 @@
  *
  * 本文件由原 Python 后端 utils.py 1:1 等价翻译而来：
  *   - 常量、静态数据（景点库/别名/三级联动/预存坐标）
- *   - 全部纯规则算法（匹配/合并/贪心/交通/时间轴/静态图/主流程）
- *   - 高德 Web 服务 REST 调用已改为高德 JS SDK（AMap.Geocoder / Walking / Driving）
+ *   - 全部纯规则算法（匹配/合并/贪心/交通/时间轴/主流程）
+ *   - 高德 Web 服务 REST 调用已移除，全部改用高德 JS SDK（AMap.Geocoder / Walking / Driving）
  *
  * 依赖：浏览器全局对象 AMap（由 main.js 动态加载高德 JS API 1.4.15）。
  * 所有结果通过 window.TripEngine 暴露给页面。
@@ -36,9 +36,6 @@
     ["龙门山", "棋盘山", "狮峰"],
     ["吉庆山", "天马山", "北高峰"]
   ];
-
-  // 静态地图仍走 REST 静态图 URL（浏览器以 <img> 直接加载，无 CORS 问题）
-  var AMAP_STATICMAP_URL = "https://restapi.amap.com/v3/staticmap";
 
   // -------------------------------------------------------------------------
   // 异常类
@@ -710,7 +707,7 @@
   }
 
   // -------------------------------------------------------------------------
-  // 交通段 / 时间轴 / 静态图
+  // 交通段 / 时间轴
   // -------------------------------------------------------------------------
   function buildLegs(originGeo, destGeo, route, key) {
     var points = [originGeo].concat(route).concat([destGeo]);
@@ -837,43 +834,10 @@
     return [steps, totalMinutes, travelTotal, visitTotal];
   }
 
-  function buildStaticMap(originGeo, destGeo, route, legs, key) {
-    var points = [originGeo].concat(route).concat([destGeo]);
-    var labels = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-
-    var markerParts = [];
-    points.forEach(function (p, idx) {
-      var label = idx < labels.length ? labels[idx] : String(idx);
-      markerParts.push('mid,0xFF4500,' + label + ':' + p.lng + ',' + p.lat);
-    });
-    var markers = markerParts.join(';');
-
-    var coords = [];
-    legs.forEach(function (leg) {
-      var pl = leg.polyline || [];
-      if (pl.length) coords = coords.concat(pl);
-    });
-    if (!coords.length) coords = points.map(function (p) { return [p.lng, p.lat]; });
-    coords = simplify(coords, 150);
-    var paths = '0x3366FF,5,0.8:' + coords.map(function (c) { return c[0] + ',' + c[1]; }).join(';');
-
-    var lngs = points.map(function (p) { return p.lng; });
-    var lats = points.map(function (p) { return p.lat; });
-    var centerLng = (Math.min.apply(null, lngs) + Math.max.apply(null, lngs)) / 2;
-    var centerLat = (Math.min.apply(null, lats) + Math.max.apply(null, lats)) / 2;
-    var diag = haversineKm(Math.min.apply(null, lngs), Math.min.apply(null, lats), Math.max.apply(null, lngs), Math.max.apply(null, lats));
-    var zoom = guessZoom(diag);
-
-    var keyQs = new URLSearchParams({ key: key }).toString();
-    return AMAP_STATICMAP_URL + '?' + keyQs +
-      '&size=750*500&location=' + centerLng + ',' + centerLat + '&zoom=' + zoom +
-      '&markers=' + markers + '&paths=' + paths;
-  }
-
   // -------------------------------------------------------------------------
   // 主规划流程
   // -------------------------------------------------------------------------
-  function planTrip(originAddr, destinationAddr, hikingBool, mustVisitRaw, count, key, staticKey) {
+  function planTrip(originAddr, destinationAddr, hikingBool, mustVisitRaw, count, key) {
     if (!key) return Promise.reject(new PlanError('请先填写高德 API Key'));
 
     return resolveAddress(originAddr, key).then(function (originGeo) {
@@ -966,9 +930,6 @@
           warnings.push('路上耗时约 ' + travelTotal + ' 分钟，占游玩时长 ' + visitTotal + ' 分钟的 ' + Math.round(ratio * 100) + '%，比例偏高');
         }
 
-        var sk = staticKey || key;
-        var staticMapUrl = buildStaticMap(originGeo, destGeo, route, legs, sk);
-
         var legsForMap = legs.map(function (leg) {
           return {
             mode: leg.mode,
@@ -1005,7 +966,6 @@
           travel_total: travelTotal,
           visit_total: visitTotal,
           warnings: warnings,
-          static_map_url: staticMapUrl,
           origin_lng: originGeo.lng,
           origin_lat: originGeo.lat,
           destination_lng: destGeo.lng,
@@ -1054,7 +1014,6 @@
     buildLegs: buildLegs,
     buildTimeline: buildTimeline,
     simplify: simplify,
-    buildStaticMap: buildStaticMap,
     planTrip: planTrip
   };
 })(window);

@@ -131,7 +131,7 @@
       <h2>路线地图</h2>
 
       <details class="map-settings">
-        <summary>地图高级设置（填写高德 JS API Key 启用动态地图，留空则显示静态图）</summary>
+        <summary>地图设置（高德 JS API Key）</summary>
         <div class="map-settings-body">
           <input type="password" id="js_api_key" placeholder="高德 JS API Key（Web端 JS API）" autocomplete="off">
           <div class="key-actions">
@@ -144,10 +144,6 @@
       </details>
 
       <div id="map-container">
-        <div id="static-map-wrap">
-          <img class="map" id="static-map-img" alt="路线地图" style="display:none;">
-          <p class="muted" id="static-map-fallback" style="display:none;">地图生成失败</p>
-        </div>
         <div id="map"></div>
         <div class="map-legend">
           <span><i class="legend-line" style="background:#888888;"></i>步行</span>
@@ -272,14 +268,6 @@
         tbody.appendChild(tr);
       });
 
-      // ---------- 静态地图 ----------
-      if (plan.static_map_url) {
-        document.getElementById('static-map-img').src = plan.static_map_url;
-        document.getElementById('static-map-img').style.display = 'block';
-      } else {
-        document.getElementById('static-map-fallback').style.display = 'block';
-      }
-
       // ---------- 动态地图 ----------
       var mapData = {
         origin_lng: plan.origin_lng,
@@ -389,7 +377,7 @@
           try { cb(); } finally { try { delete window[cbName]; } catch (e) {} }
         };
         var s = document.createElement('script');
-        s.src = 'https://webapi.amap.com/maps?v=1.4.15&key=' + encodeURIComponent(key) + '&callback=' + cbName;
+        s.src = 'https://webapi.amap.com/maps?v=1.4.15&key=' + encodeURIComponent(key) + '&callback=' + cbName + '&plugin=AMap.Geocoder';
         s.onerror = function () { alert('高德 JS API 加载失败，请检查 JS API Key 与网络'); };
         document.head.appendChild(s);
       }
@@ -406,7 +394,7 @@
 
       function autoFillJsApiKey() {
         try {
-          var savedJsKey = localStorage.getItem('amap_js_api_key') || localStorage.getItem('amap_key');
+          var savedJsKey = localStorage.getItem('amap_js_api_key') || sessionStorage.getItem('amap_js_api_key');
           if (savedJsKey) {
             jsKeyInput.value = savedJsKey;
             if (jsKeySaveBox) jsKeySaveBox.checked = true;
@@ -416,10 +404,15 @@
       }
       autoFillJsApiKey();
 
+      if (jsKeyInput.value.trim()) {
+        document.getElementById('map').style.display = 'block';
+        loadAMap(jsKeyInput.value.trim(), initMap);
+      }
+
       jsKeyClearBtn.addEventListener('click', function () {
         try {
           localStorage.removeItem('amap_js_api_key');
-          localStorage.removeItem('amap_key');
+          sessionStorage.removeItem('amap_js_api_key');
         } catch (e) {}
         jsKeyInput.value = '';
         jsKeySaveBox.checked = false;
@@ -430,7 +423,6 @@
         if (!jsKeySaveBox.checked) {
           try {
             localStorage.removeItem('amap_js_api_key');
-            localStorage.removeItem('amap_key');
           } catch (e) {}
           renderJsKeyHint('');
         }
@@ -440,16 +432,14 @@
         var key = jsKeyInput.value.trim();
         if (!key) { alert('请先填写高德 JS API Key'); return; }
         try {
+          sessionStorage.setItem('amap_js_api_key', key);
           if (jsKeySaveBox.checked) {
             localStorage.setItem('amap_js_api_key', key);
-            localStorage.setItem('amap_key', key);
             renderJsKeyHint(key);
           } else {
             localStorage.removeItem('amap_js_api_key');
-            localStorage.removeItem('amap_key');
           }
         } catch (e) {}
-        document.getElementById('static-map-wrap').style.display = 'none';
         document.getElementById('map').style.display = 'block';
         loadAMap(key, initMap);
       });

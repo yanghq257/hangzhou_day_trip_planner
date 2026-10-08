@@ -3,7 +3,7 @@
  *
  * 职责：
  *   1. 用内嵌的 DISTRICT_STREET_COMMUNITY 填充三级联动地址选择器；
- *   2. 管理 amap_key（Web 服务）与 amap_js_api_key（JS API）的 localStorage/sessionStorage 回填；
+ *   2. 管理 amap_js_api_key（JS API）的 localStorage/sessionStorage 回填；
  *   3. 动态加载高德 JS API 1.4.15（含 Geocoder / Walking / Driving 插件）；
  *   4. 拦截表单提交，浏览器本地执行 TripEngine.planTrip()，结果写入 sessionStorage 后跳转 result.html。
  */
@@ -23,8 +23,8 @@
   }
 
   // -------------------------------------------------------------------------
-  // 高德 Key：amap_key（Web 服务） + amap_js_api_key（JS API）
-  // 保留原跨页同步回填逻辑：localStorage 优先，sessionStorage 兜底
+  // 高德 Key：仅 amap_js_api_key（JS API）
+  // 保留跨页同步回填逻辑：localStorage 优先，sessionStorage 兜底
   // -------------------------------------------------------------------------
   function storageGet(key) {
     try { return localStorage.getItem(key); } catch (e) { return null; }
@@ -46,35 +46,27 @@
   }
 
   function initKeys() {
-    var webInput = $('amap_key');
     var jsInput = $('amap_js_api_key');
     var saveBox = $('save_keys');
 
     function renderHint() {
-      var saved = !!(storageGet('amap_key') || storageGet('amap_js_api_key'));
+      var saved = !!storageGet('amap_js_api_key');
       var hint = $('keys_hint');
       if (hint) hint.style.display = saved ? 'block' : 'none';
       if (saveBox) saveBox.checked = saved;
     }
 
-    // 回填
-    var webLocal = storageGet('amap_key');
-    var webSession = sessionGet('amap_key');
-    if (webInput) webInput.value = webLocal || webSession || '';
-
-    var jsLocal = storageGet('amap_js_api_key') || storageGet('amap_key');
-    var jsSession = sessionGet('amap_js_api_key') || sessionGet('amap_key');
+    // 回填：localStorage 优先，sessionStorage 兜底
+    var jsLocal = storageGet('amap_js_api_key');
+    var jsSession = sessionGet('amap_js_api_key');
     if (jsInput) jsInput.value = jsLocal || jsSession || '';
 
     renderHint();
 
     if ($('keys_clear')) {
       $('keys_clear').addEventListener('click', function () {
-        storageRemove('amap_key');
         storageRemove('amap_js_api_key');
-        sessionRemove('amap_key');
         sessionRemove('amap_js_api_key');
-        if (webInput) webInput.value = '';
         if (jsInput) jsInput.value = '';
         renderHint();
       });
@@ -83,7 +75,6 @@
     if (saveBox) {
       saveBox.addEventListener('change', function () {
         if (!saveBox.checked) {
-          storageRemove('amap_key');
           storageRemove('amap_js_api_key');
           renderHint();
         }
@@ -246,19 +237,10 @@
       e.preventDefault();
       showError('');
 
-      var webKey = ($('amap_key').value || '').trim();
       var jsKey = ($('amap_js_api_key').value || '').trim();
       var saveBox = $('save_keys');
 
       // 记忆 Key：会话始终记住；勾选「保存到本机」时写入 localStorage
-      if (webKey) {
-        sessionSet('amap_key', webKey);
-        if (saveBox && saveBox.checked) storageSet('amap_key', webKey);
-        else storageRemove('amap_key');
-      } else {
-        sessionRemove('amap_key');
-        storageRemove('amap_key');
-      }
       if (jsKey) {
         sessionSet('amap_js_api_key', jsKey);
         if (saveBox && saveBox.checked) storageSet('amap_js_api_key', jsKey);
@@ -299,8 +281,8 @@
         if (v) mustVisit.push(v);
       }
 
-      // SDK 需要 JS API Key；未填则回退到 Web 服务 Key
-      var sdkKey = jsKey || webKey;
+      // SDK 需要 JS API Key
+      var sdkKey = jsKey;
       if (!sdkKey) {
         showError('请先填写高德 JS API Key');
         return;
@@ -310,7 +292,7 @@
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '规划中…'; }
 
       loadAMapSDK(sdkKey).then(function () {
-        return window.TripEngine.planTrip(origin, destination, hiking, mustVisit, count, sdkKey, webKey);
+        return window.TripEngine.planTrip(origin, destination, hiking, mustVisit, count, sdkKey);
       }).then(function (plan) {
         try {
           sessionStorage.setItem('trip_plan_result', JSON.stringify(plan));
