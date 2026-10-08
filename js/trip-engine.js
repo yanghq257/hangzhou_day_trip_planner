@@ -590,45 +590,60 @@
   function geocode(address, key) {
     return new Promise(function (resolve, reject) {
       if (!key) { reject(new PlanError('请先填写高德 API Key')); return; }
-      var addr = (address || '').trim();
+      var rawAddr = (address || '').trim();
+      console.log('[geocode] 传入地址:', rawAddr);
+      var addr = rawAddr;
       if (addr && addr.indexOf('杭州市') !== 0) addr = '杭州市' + addr;
+      console.log('[geocode] 拼接后地址:', addr);
 
       if (!global.AMap || !global.AMap.Geocoder) {
         reject(new PlanError('高德 JS API 尚未加载，请检查 JS API Key'));
         return;
       }
-      var geocoder = new global.AMap.Geocoder({});
-      geocoder.getLocation(addr, function (status, result) {
-        if (status === 'complete' && result && result.geocodes && result.geocodes.length) {
-          var g = result.geocodes[0];
-          var loc = g.location;
-          var lng = (loc && typeof loc.getLng === 'function') ? loc.getLng() : (loc && loc.lng);
-          var lat = (loc && typeof loc.getLat === 'function') ? loc.getLat() : (loc && loc.lat);
-          if (typeof lng !== 'number' || typeof lat !== 'number') {
-            reject(new PlanError('地址坐标格式异常：' + address));
-            return;
+      var geocoder = new global.AMap.Geocoder({ city: '杭州市' });
+      try {
+        geocoder.getLocation(addr, function (status, result) {
+          console.log('[geocode] status:', status);
+          console.log('[geocode] result:', result);
+          try {
+            if (status === 'complete' && result && result.geocodes && result.geocodes.length) {
+              var g = result.geocodes[0];
+              var loc = g.location;
+              var lng = (loc && typeof loc.getLng === 'function') ? loc.getLng() : (loc && loc.lng);
+              var lat = (loc && typeof loc.getLat === 'function') ? loc.getLat() : (loc && loc.lat);
+              if (typeof lng !== 'number' || typeof lat !== 'number') {
+                reject(new PlanError('地址坐标格式异常：' + address));
+                return;
+              }
+              var geo = {
+                formatted: g.formattedAddress || address,
+                lng: lng,
+                lat: lat,
+                province: (typeof g.province === 'object' && g.province) ? (g.province.name || '') : (g.province || ''),
+                city: _cityName(g.city),
+                district: (typeof g.district === 'object' && g.district) ? (g.district.name || '') : (g.district || ''),
+                adcode: String(g.adcode || '')
+              };
+              if (geo.city !== '杭州市') {
+                reject(new PlanError('该地址不在杭州市范围内，请重新填写'));
+                return;
+              }
+              if (geo.district && !MAIN_URBAN_DISTRICTS.has(geo.district)) {
+                geo.warning = '该地点不在传统主城区，通勤距离较长';
+              }
+              resolve(geo);
+            } else {
+              reject(new PlanError('地址解析失败，请检查地址是否正确'));
+            }
+          } catch (callbackErr) {
+            console.error('[geocode] 回调处理异常:', callbackErr);
+            reject(new PlanError('地址解析失败，请检查地址是否正确'));
           }
-          var geo = {
-            formatted: g.formattedAddress || address,
-            lng: lng,
-            lat: lat,
-            province: (typeof g.province === 'object' && g.province) ? (g.province.name || '') : (g.province || ''),
-            city: _cityName(g.city),
-            district: (typeof g.district === 'object' && g.district) ? (g.district.name || '') : (g.district || ''),
-            adcode: String(g.adcode || '')
-          };
-          if (geo.city !== '杭州市') {
-            reject(new PlanError('该地址不在杭州市范围内，请重新填写'));
-            return;
-          }
-          if (geo.district && !MAIN_URBAN_DISTRICTS.has(geo.district)) {
-            geo.warning = '该地点不在传统主城区，通勤距离较长';
-          }
-          resolve(geo);
-        } else {
-          reject(new PlanError('地址解析失败，请检查地址是否正确'));
-        }
-      });
+        });
+      } catch (callErr) {
+        console.error('[geocode] getLocation 调用异常:', callErr);
+        reject(new PlanError('地址解析失败，请检查地址是否正确'));
+      }
     });
   }
 

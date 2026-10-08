@@ -250,13 +250,14 @@
         storageRemove('amap_js_api_key');
       }
 
-      // 地址：下拉选中小区优先；未选中才读手动输入
+      // 地址：下拉选中则拼接「区+街道+社区」完整地址；未选中才读手动输入
       var origin = '';
       var destination = '';
       ['origin', 'destination'].forEach(function (prefix) {
-        var community = getCommunity(prefix);
+        var selected = getSelectedAddress(prefix);
         var manual = ($(prefix + '_manual').value || '').trim();
-        var val = community || manual;
+        var val = selected || manual;
+        console.log('[main] ' + prefix + ' 提交地址:', val);
         if (prefix === 'origin') origin = val;
         else destination = val;
       });
@@ -310,9 +311,13 @@
     });
   }
 
-  function getCommunity(prefix) {
-    var sel = $(prefix + '_community');
-    return (!sel.disabled && sel.value) ? sel.value : '';
+  function getSelectedAddress(prefix) {
+    var parts = [];
+    ['district', 'street', 'community'].forEach(function (kind) {
+      var sel = $(prefix + '_' + kind);
+      if (sel && !sel.disabled && sel.value) parts.push(sel.value);
+    });
+    return parts.join('');
   }
 
   // -------------------------------------------------------------------------
