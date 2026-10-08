@@ -31,6 +31,15 @@ BOAT_MINUTES = 30            # 孤岛游船接驳估算耗时（分钟）
 DEFAULT_START_TIME = "09:00"
 HTTP_TIMEOUT = 10            # 请求高德接口超时（秒）
 CONNECTED_HIKING_MEMBERS = ("老和山", "北高峰")  # 连通登山线路成员（按山脊线串联）
+# 多组连通登山线路（按山脊线串联）。仅当一组内全部景点均被选中时才合并。
+MULTI_CONNECTED_HIKING = [
+    ["老和山", "灵峰山", "北高峰"],
+    ["北高峰", "美人峰", "龙门山"],
+    ["虎跑公园", "贵人阁", "玉皇山"],
+    ["五云山", "龙井村"],
+    ["龙门山", "棋盘山", "狮峰"],
+    ["吉庆山", "天马山", "北高峰"],
+]
 
 
 class PlanError(Exception):
@@ -226,6 +235,188 @@ PLACES = [
     {"name": "虎跑公园", "lng": 120.1378, "lat": 30.2045, "is_hiking": True,
      "visit_minutes": 60, "is_water_island": False,
      "description": "虎跑梦泉，西湖新十景之一，以虎跑泉水、济公传说和山林步道闻名"},
+
+    # ---------- 新增登山点位 ----------
+    {"name": "吴山", "lng": 120.1600, "lat": 30.2370, "is_hiking": True,
+     "visit_minutes": 90, "is_water_island": False,
+     "description": "吴山天风，老城山体，城隍阁俯瞰杭州老城，适合轻登山。",
+     "start_climb_point": "吴山广场", "start_climb_lng": 120.1620, "start_climb_lat": 30.2390,
+     "end_climb_point": "河坊街出口", "end_climb_lng": 120.1640, "end_climb_lat": 30.2400,
+     "hiking_duration_min": 70},
+
+    {"name": "冠山公园", "lng": 120.1440, "lat": 30.1820, "is_hiking": True,
+     "visit_minutes": 80, "is_water_island": False,
+     "description": "滨江区冠山，山顶可眺望钱塘江与滨江城区，难度轻松。",
+     "start_climb_point": "冠山公园南入口", "start_climb_lng": 120.1432, "start_climb_lat": 30.1805,
+     "end_climb_point": "冠山北出口", "end_climb_lng": 120.1451, "end_climb_lat": 30.1833,
+     "hiking_duration_min": 60},
+
+    {"name": "龙坞茶镇", "lng": 120.0320, "lat": 30.2210, "is_hiking": True,
+     "visit_minutes": 120, "is_water_island": False,
+     "description": "万亩龙井茶园，光明寺水库，平缓茶山徒步，适合休闲登山。",
+     "start_climb_point": "龙坞何家村市集", "start_climb_lng": 120.0301, "start_climb_lat": 30.2202,
+     "end_climb_point": "光明寺水库出口", "end_climb_lng": 120.0344, "end_climb_lat": 30.2235,
+     "hiking_duration_min": 90},
+
+    {"name": "灵峰山", "lng": 120.1040, "lat": 30.2610, "is_hiking": True,
+     "visit_minutes": 70, "is_water_island": False,
+     "description": "十里龙脊山脊节点，连接老和山、美人峰至北高峰，山林清幽。",
+     "start_climb_point": "老和云起步道口", "start_climb_lng": 120.1180, "start_climb_lat": 30.2640,
+     "end_climb_point": "北高峰方向石人亭岔口", "end_climb_lng": 120.1020, "end_climb_lat": 30.2580,
+     "hiking_duration_min": 55},
+
+    {"name": "美人峰", "lng": 120.0960, "lat": 30.2540, "is_hiking": True,
+     "visit_minutes": 75, "is_water_island": False,
+     "description": "十里龙脊主要山峰，视野开阔，可远眺西溪与西湖。",
+     "start_climb_point": "北高峰财神庙后山步道", "start_climb_lng": 120.1070, "start_climb_lat": 30.2550,
+     "end_climb_point": "龙门山方向山脊岔口", "end_climb_lng": 120.0920, "end_climb_lat": 30.2510,
+     "hiking_duration_min": 60},
+
+    {"name": "龙门山", "lng": 120.0860, "lat": 30.2480, "is_hiking": True,
+     "visit_minutes": 80, "is_water_island": False,
+     "description": "西山十里龙脊西段高峰，山林野趣，通往石人亭、法喜寺下撤口。",
+     "start_climb_point": "美人峰山脊过来岔口", "start_climb_lng": 120.0910, "start_climb_lat": 30.2500,
+     "end_climb_point": "石人亭下撤天竺方向", "end_climb_lng": 120.0820, "end_climb_lat": 30.2440,
+     "hiking_duration_min": 65},
+
+    {"name": "五云山", "lng": 120.0820, "lat": 30.2040, "is_hiking": True,
+     "visit_minutes": 100, "is_water_island": False,
+     "description": "十里琅珰起点，真际寺古树，下山可达九溪烟树。",
+     "start_climb_point": "九溪烟树登山口", "start_climb_lng": 120.0980, "start_climb_lat": 30.1880,
+     "end_climb_point": "十里琅珰龙井村出口", "end_climb_lng": 120.0860, "end_climb_lat": 30.2120,
+     "hiking_duration_min": 85},
+
+    {"name": "贵人阁", "lng": 120.1340, "lat": 30.2080, "is_hiking": True,
+     "visit_minutes": 60, "is_water_island": False,
+     "description": "虎跑后山观景制高点，同时看西湖与钱塘江，可连通玉皇山环线。",
+     "start_climb_point": "虎跑公园后山入口", "start_climb_lng": 120.1370, "start_climb_lat": 30.2030,
+     "end_climb_point": "玉皇山慈云岭方向出口", "end_climb_lng": 120.1380, "end_climb_lat": 30.2130,
+     "hiking_duration_min": 45},
+
+    {"name": "如意尖", "lng": 120.0010, "lat": 30.2060, "is_hiking": True,
+     "visit_minutes": 150, "is_water_island": False,
+     "description": "杭州城西最高峰，西山百里如意景观带核心，山野长距离徒步。",
+     "start_climb_point": "大岭村登山入口", "start_climb_lng": 119.9940, "start_climb_lat": 30.2020,
+     "end_climb_point": "板壁山水库下撤口", "end_climb_lng": 120.0060, "end_climb_lat": 30.2100,
+     "hiking_duration_min": 120},
+
+    {"name": "大清谷", "lng": 120.0440, "lat": 30.2460, "is_hiking": True,
+     "visit_minutes": 90, "is_water_island": False,
+     "description": "西山游步道北段节点，山谷茶园，难度中等，可连接龙坞方向。",
+     "start_climb_point": "大清谷景区入口", "start_climb_lng": 120.0410, "start_climb_lat": 30.2430,
+     "end_climb_point": "龙坞方向游步道岔口", "end_climb_lng": 120.0480, "end_climb_lat": 30.2490,
+     "hiking_duration_min": 70},
+
+    {"name": "北观音洞", "lng": 120.1220, "lat": 30.2430, "is_hiking": True,
+     "visit_minutes": 50, "is_water_island": False,
+     "description": "灵隐周边山体，石窟遗迹，连接吉庆山，短途登山。",
+     "start_climb_point": "灵隐飞来峰西侧山道", "start_climb_lng": 120.1170, "start_climb_lat": 30.2410,
+     "end_climb_point": "吉庆山山脊岔口", "end_climb_lng": 120.1240, "end_climb_lat": 30.2460,
+     "hiking_duration_min": 40},
+
+    {"name": "天马山", "lng": 120.1140, "lat": 30.2490, "is_hiking": True,
+     "visit_minutes": 60, "is_water_island": False,
+     "description": "灵隐后方山体，连接吉庆山与北高峰，西山游步道节点。",
+     "start_climb_point": "北观音洞山脊过来岔口", "start_climb_lng": 120.1230, "start_climb_lat": 30.2470,
+     "end_climb_point": "北高峰南侧山道出口", "end_climb_lng": 120.1120, "end_climb_lat": 30.2530,
+     "hiking_duration_min": 48},
+
+    {"name": "吉庆山", "lng": 120.1280, "lat": 30.2450, "is_hiking": True,
+     "visit_minutes": 55, "is_water_island": False,
+     "description": "西湖西侧山体，毗邻灵隐，可串天马山-北高峰。",
+     "start_climb_point": "杨公堤郭庄后山入口", "start_climb_lng": 120.1310, "start_climb_lat": 30.2480,
+     "end_climb_point": "北观音洞方向山脊岔口", "end_climb_lng": 120.1210, "end_climb_lat": 30.2420,
+     "hiking_duration_min": 42},
+
+    {"name": "棋盘山", "lng": 120.0920, "lat": 30.2260, "is_hiking": True,
+     "visit_minutes": 70, "is_water_island": False,
+     "description": "十里琅珰中段制高点，连接龙门山、狮峰，茶园环绕。",
+     "start_climb_point": "龙门山南侧下山步道", "start_climb_lng": 120.0870, "start_climb_lat": 30.2290,
+     "end_climb_point": "狮峰龙井方向岔口", "end_climb_lng": 120.0960, "end_climb_lat": 30.2220,
+     "hiking_duration_min": 52},
+
+    {"name": "狮峰", "lng": 120.0980, "lat": 30.2190, "is_hiking": True,
+     "visit_minutes": 65, "is_water_island": False,
+     "description": "狮峰龙井核心产区，十里琅珰必经点位，茶园观景。",
+     "start_climb_point": "棋盘山过来山脊", "start_climb_lng": 120.0950, "start_climb_lat": 30.2230,
+     "end_climb_point": "龙井村下山出口", "end_climb_lng": 120.1020, "end_climb_lat": 30.2160,
+     "hiking_duration_min": 48},
+
+    {"name": "白鹤峰", "lng": 120.1000, "lat": 30.2340, "is_hiking": True,
+     "visit_minutes": 60, "is_water_island": False,
+     "description": "天竺群山，俯瞰灵隐寺院群，短途徒步。",
+     "start_climb_point": "法喜寺后山入口", "start_climb_lng": 120.0840, "start_climb_lat": 30.2320,
+     "end_climb_point": "棋盘山北向山道岔口", "end_climb_lng": 120.0970, "end_climb_lat": 30.2360,
+     "hiking_duration_min": 45},
+
+    {"name": "桃桂山", "lng": 120.1080, "lat": 30.2510, "is_hiking": True,
+     "visit_minutes": 45, "is_water_island": False,
+     "description": "北高峰南侧小山，连接天马山，灵隐上山的过渡山体。",
+     "start_climb_point": "天马山北下口", "start_climb_lng": 120.1130, "start_climb_lat": 30.2480,
+     "end_climb_point": "北高峰南坡步道", "end_climb_lng": 120.1090, "end_climb_lat": 30.2540,
+     "hiking_duration_min": 35},
+
+    {"name": "九华山(转塘)", "lng": 120.0480, "lat": 30.1900, "is_hiking": True,
+     "visit_minutes": 95, "is_water_island": False,
+     "description": "转塘九华山，临近龙坞，茶山与山林结合，人少清静。",
+     "start_climb_point": "转塘九华村登山口", "start_climb_lng": 120.0440, "start_climb_lat": 30.1870,
+     "end_climb_point": "龙坞游步道西南岔口", "end_climb_lng": 120.0510, "end_climb_lat": 30.1930,
+     "hiking_duration_min": 72},
+
+    {"name": "石岩山", "lng": 120.2720, "lat": 30.1210, "is_hiking": True,
+     "visit_minutes": 85, "is_water_island": False,
+     "description": "萧山石岩山，一览湘湖全景，湘湖周边登山。",
+     "start_climb_point": "石岩山东门登山口", "start_climb_lng": 120.2700, "start_climb_lat": 30.1180,
+     "end_climb_point": "石岩山西侧下湘湖出口", "end_climb_lng": 120.2740, "end_climb_lat": 30.1240,
+     "hiking_duration_min": 62},
+
+    {"name": "望宸阁", "lng": 120.1740, "lat": 30.3530, "is_hiking": True,
+     "visit_minutes": 70, "is_water_island": False,
+     "description": "半山国家森林公园制高点望宸阁，城北登高俯瞰杭城。",
+     "start_climb_point": "半山公园主入口", "start_climb_lng": 120.1790, "start_climb_lat": 30.3480,
+     "end_climb_point": "虎山公园下撤口", "end_climb_lng": 120.1710, "end_climb_lat": 30.3570,
+     "hiking_duration_min": 50},
+
+    # ---------- 新增人文/观光点位 ----------
+    {"name": "孤山公园", "lng": 120.1400, "lat": 30.2510, "is_hiking": False,
+     "visit_minutes": 70, "is_water_island": False,
+     "description": "西湖孤山，浙江博物馆孤山馆、西泠印社，湖山人文一体。"},
+
+    {"name": "柳浪闻莺", "lng": 120.1540, "lat": 30.2340, "is_hiking": False,
+     "visit_minutes": 60, "is_water_island": False,
+     "description": "西湖十景，南宋御花园，垂柳湖滨大草坪。"},
+
+    {"name": "茅家埠", "lng": 120.1160, "lat": 30.2360, "is_hiking": False,
+     "visit_minutes": 75, "is_water_island": False,
+     "description": "西湖小众水域，野趣湖岸，人少静谧。"},
+
+    {"name": "德寿宫", "lng": 120.1680, "lat": 30.2420, "is_hiking": False,
+     "visit_minutes": 90, "is_water_island": False,
+     "description": "南宋德寿宫遗址，红墙网红打卡，宋代宫殿遗址。"},
+
+    {"name": "城隍阁", "lng": 120.1605, "lat": 30.2378, "is_hiking": False,
+     "visit_minutes": 60, "is_water_island": False,
+     "description": "吴山之巅楼阁，登高俯瞰杭州老城全景。"},
+
+    {"name": "万松书院", "lng": 120.1470, "lat": 30.2280, "is_hiking": False,
+     "visit_minutes": 60, "is_water_island": False,
+     "description": "古代杭州最高学府，梁山伯祝英台传说，周末相亲角。"},
+
+    {"name": "六和塔", "lng": 120.1320, "lat": 30.1920, "is_hiking": False,
+     "visit_minutes": 70, "is_water_island": False,
+     "description": "钱塘江畔千年古塔，登塔眺望钱塘江大桥。"},
+
+    {"name": "法喜寺", "lng": 120.0830, "lat": 30.2330, "is_hiking": False,
+     "visit_minutes": 90, "is_water_island": False,
+     "description": "上天竺法喜讲寺，网红寺庙，求姻缘，山林禅院。"},
+
+    {"name": "香积寺", "lng": 120.1410, "lat": 30.3070, "is_hiking": False,
+     "visit_minutes": 60, "is_water_island": False,
+     "description": "京杭大运河旁古寺，素斋知名。"},
+
+    {"name": "小河直街", "lng": 120.1430, "lat": 30.3120, "is_hiking": False,
+     "visit_minutes": 70, "is_water_island": False,
+     "description": "运河历史街区，文艺咖啡馆，老民居风貌。"},
 ]
 
 PLACE_BY_NAME = {p["name"]: p for p in PLACES}
@@ -233,6 +424,19 @@ PLACE_BY_NAME = {p["name"]: p for p in PLACES}
 # 别名映射：将用户输入的口语化别名替换为景点库标准名称后再检索
 PLACE_ALIAS = {
     "虎跑": "虎跑公园",
+    "吴山天风": "吴山",
+    "上天竺": "法喜寺",
+    "小河直": "小河直街",
+    "德寿宫遗址": "德寿宫",
+    "冠山": "冠山公园",
+    "龙坞": "龙坞茶镇",
+    "十里琅珰": "五云山",
+    "贵人阁观景台": "贵人阁",
+    "如意尖登山": "如意尖",
+    "大清谷徒步": "大清谷",
+    "望宸阁观景台": "望宸阁",
+    "石岩山湘湖": "石岩山",
+    "棋盘山十里琅珰": "棋盘山",
 }
 
 
@@ -435,37 +639,71 @@ def match_place(query):
 
 
 def _merge_connected_hiking(spots):
-    """若同时勾选老和山与北高峰，则合并为一条连续登山线路（单一节点）。
+    """合并连通登山线路为单一虚拟节点。
 
-    保持纯规则引擎：仅当两者都显式必去时调用，供登山模式形成
-    「老和山 → 北高峰」山脊线连续穿越，不再产生两者间的步行/打车接驳。
+    优先循环处理 MULTI_CONNECTED_HIKING 中配置的多组山脊线路，仅当一整组
+    景点全部被选中时才触发合并；处理完多组后再执行既有「老和山 → 北高峰」
+    逻辑作为兜底兼容。部分选中组内景点时保持独立景点，不触发合并。
     """
-    names = [p["name"] for p in spots]
-    if not all(m in names for m in CONNECTED_HIKING_MEMBERS):
-        return spots
+    result = list(spots)
 
-    a = next(p for p in spots if p["name"] == CONNECTED_HIKING_MEMBERS[0])
-    b = next(p for p in spots if p["name"] == CONNECTED_HIKING_MEMBERS[1])
-    merged = {
-        "name": "老和山 → 北高峰，连续登山线路",
-        "lng": round((a["lng"] + b["lng"]) / 2, 6),
-        "lat": round((a["lat"] + b["lat"]) / 2, 6),
-        "is_hiking": True,
-        "visit_minutes": int(a["visit_minutes"]) + int(b["visit_minutes"]),
-        "is_water_island": False,
-        "description": "沿西湖群山西山游步道连续穿越老和山至北高峰，可远眺西溪湿地与西湖。",
-        "connected_hiking": True,
-        "members": list(CONNECTED_HIKING_MEMBERS),
-    }
-    out, inserted = [], False
-    for p in spots:
-        if p["name"] in CONNECTED_HIKING_MEMBERS:
-            if not inserted:
-                out.append(merged)
-                inserted = True
-            continue
-        out.append(p)
-    return out
+    def merge_group(group):
+        """若 group 内全部景点都在 result 中，则替换为一个合并节点。"""
+        names = [p["name"] for p in result]
+        if not all(m in names for m in group):
+            return
+        members = [next(p for p in result if p["name"] == m) for m in group]
+        merged = {
+            "name": " → ".join(group) + "，连续登山线路",
+            "lng": round(sum(m["lng"] for m in members) / len(members), 6),
+            "lat": round(sum(m["lat"] for m in members) / len(members), 6),
+            "is_hiking": True,
+            "visit_minutes": int(sum(m["visit_minutes"] for m in members)),
+            "is_water_island": False,
+            "description": "沿西湖群山西山游步道连续穿越" + "、".join(group) + "，山脊线串联徒步登山。",
+            "connected_hiking": True,
+            "members": list(group),
+        }
+        out, inserted = [], False
+        for p in result:
+            if p["name"] in group:
+                if not inserted:
+                    out.append(merged)
+                    inserted = True
+                continue
+            out.append(p)
+        result[:] = out
+
+    for group in MULTI_CONNECTED_HIKING:
+        merge_group(group)
+
+    # 兜底兼容：老和山 → 北高峰 连续登山线路
+    names = [p["name"] for p in result]
+    if all(m in names for m in CONNECTED_HIKING_MEMBERS):
+        a = next(p for p in result if p["name"] == CONNECTED_HIKING_MEMBERS[0])
+        b = next(p for p in result if p["name"] == CONNECTED_HIKING_MEMBERS[1])
+        merged = {
+            "name": "老和山 → 北高峰，连续登山线路",
+            "lng": round((a["lng"] + b["lng"]) / 2, 6),
+            "lat": round((a["lat"] + b["lat"]) / 2, 6),
+            "is_hiking": True,
+            "visit_minutes": int(a["visit_minutes"]) + int(b["visit_minutes"]),
+            "is_water_island": False,
+            "description": "沿西湖群山西山游步道连续穿越老和山至北高峰，可远眺西溪湿地与西湖。",
+            "connected_hiking": True,
+            "members": list(CONNECTED_HIKING_MEMBERS),
+        }
+        out, inserted = [], False
+        for p in result:
+            if p["name"] in CONNECTED_HIKING_MEMBERS:
+                if not inserted:
+                    out.append(merged)
+                    inserted = True
+                continue
+            out.append(p)
+        result = out
+
+    return result
 
 
 def _nearest(current, candidates):
