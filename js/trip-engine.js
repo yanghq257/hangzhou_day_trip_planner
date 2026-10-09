@@ -679,8 +679,13 @@
         return;
       }
       var geocoder = new global.AMap.Geocoder({ city: '杭州市' });
+      console.log('[geocode] 即将调用 getLocation 解析完整地址:', addr);
+      var timeoutTimer = setTimeout(function () {
+        reject(new PlanError('地址解析超时，请稍后重试'));
+      }, 10000);
       try {
         geocoder.getLocation(addr, function (status, result) {
+          clearTimeout(timeoutTimer);
           console.log('[geocode] status:', status);
           console.log('[geocode] result:', result);
           try {
@@ -720,8 +725,10 @@
               if (geo.district && !MAIN_URBAN_DISTRICTS.has(geo.district)) {
                 geo.warning = '该地点不在传统主城区，通勤距离较长';
               }
+              console.log('[geocode成功] 地址:', geo.formatted, '返回坐标:', lng, lat);
               resolve(geo);
             } else {
+              console.log('[geocode失败] status:', status, '错误信息:', result);
               reject(new PlanError('地址解析失败，请检查地址是否正确'));
             }
           } catch (callbackErr) {
