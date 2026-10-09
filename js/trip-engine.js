@@ -1084,16 +1084,30 @@
         });
 
         var hikingMarkers = [];
+        var hikingTrails = [];
         route.forEach(function (p) {
           if (!p.is_hiking) return;
           var members = p.members || [];
           if (members.length) {
+            var trail = [];
             members.forEach(function (memberName) {
               var src = PLACE_BY_NAME[memberName];
-              if (src) hikingMarkers.push({ name: src.name, lng: src.lng, lat: src.lat });
+              if (src) {
+                hikingMarkers.push({ name: src.name, lng: src.lng, lat: src.lat });
+                trail.push([src.lng, src.lat]);
+              }
             });
+            if (trail.length) hikingTrails.push(trail);
           } else {
             hikingMarkers.push({ name: p.name, lng: p.lng, lat: p.lat });
+            if (p.start_climb_lng != null && p.end_climb_lng != null) {
+              hikingTrails.push([
+                [p.start_climb_lng, p.start_climb_lat],
+                [p.end_climb_lng, p.end_climb_lat]
+              ]);
+            } else {
+              hikingTrails.push([[p.lng, p.lat]]);
+            }
           }
         });
 
@@ -1120,7 +1134,8 @@
           destination_lng: destGeo.lng,
           destination_lat: destGeo.lat,
           legs: legsForMap,
-          hiking_markers: hikingMarkers
+          hiking_markers: hikingMarkers,
+          hiking_trails: hikingTrails
         };
       });
     });

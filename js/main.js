@@ -4,8 +4,10 @@
  * 职责：
  *   1. 用内嵌的 DISTRICT_STREET_COMMUNITY 填充三级联动地址选择器；
  *   2. 管理 amap_js_api_key（JS API Key）与 amap_js_security_code（安全密钥）的 localStorage/sessionStorage 回填；
- *   3. 动态加载高德 JS API 1.4.15（含 Geocoder / Walking / Driving 插件）；
- *   4. 拦截表单提交，浏览器本地执行 TripEngine.planTrip()，结果写入 sessionStorage 后跳转 result.html。
+ *   3. 动态加载高德 JS API 2.0（含 Geocoder / Walking / Driving 插件）；
+ *   4. 维护「必去景点」chips 与「游玩景点数量」1-6 校验；
+ *   5. 拦截表单提交，浏览器本地执行 TripEngine.planTrip()，结果写入 sessionStorage 后跳转 result.html；
+ *   6. 提交前把表单状态写入 sessionStorage，供 result.html「重新规划」回传还原。
  */
 (function () {
   'use strict';
@@ -107,11 +109,6 @@
       sel.disabled = disabled;
     }
 
-    function getSelectedCommunity(prefix) {
-      var sel = $(prefix + '_community');
-      return (!sel.disabled && sel.value) ? sel.value : '';
-    }
-
     function getFullAddress(prefix) {
       var parts = [];
       ['district', 'street', 'community'].forEach(function (kind) {
@@ -205,6 +202,172 @@
   }
 
   // -------------------------------------------------------------------------
+  // 必去景点 chips
+  // -------------------------------------------------------------------------
+  var mustVisitItems = [];
+
+  function renderChips() {
+    var chips = $('must-visit-chips');
+    if (!chips) return;
+    chips.innerHTML = '';
+    mustVisitItems.forEach(function (name, idx) {
+      var chip = document.createElement('span');
+      chip.className = 'chip';
+
+      var text = document.createElement('span');
+      text.className = 'chip-text';
+      text.textContent = name;
+
+      var remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'chip-remove';
+      remove.setAttribute('aria-label', '删除 ' + name);
+      remove.textContent = '×';
+      remove.addEventListener('click', function () {
+        mustVisitItems.splice(idx, 1);
+        renderChips();
+      });
+
+      chip.appendChild(text);
+      chip.appendChild(remove);
+      chips.appendChild(chip);
+    });
+
+    var full = mustVisitItems.length >= 6;
+    var input = $('must-visit-input');
+    var addBtn = $('must-visit-add');
+    if (input) input.disabled = full;
+    if (addBtn) addBtn.disabled = full;
+  }
+
+  function addMustVisit() {
+    var input = $('must-visit-input');
+    var err = $('must-visit-error');
+    var v = (input && input.value ? input.value : '').trim();
+    if (!v) return;
+    if (mustVisitItems.length >= 6) {
+      if (err) err.style.display = 'block';
+      return;
+    }
+    if (mustVisitItems.indexOf(v) !== -1) {
+      input.value = '';
+      return;
+    }
+    if (err) err.style.display = 'none';
+    mustVisitItems.push(v);
+    input.value = '';
+    renderChips();
+  }
+
+  function initMustVisit() {
+    var addBtn = $('must-visit-add');
+    var input = $('must-visit-input');
+    if (addBtn) addBtn.addEventListener('click', addMustVisit);
+    if (input) {
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          addMustVisit();
+        }
+      });
+    }
+    renderChips();
+  }
+
+  // -------------------------------------------------------------------------
+  // 游玩景点数量校验
+  // -------------------------------------------------------------------------
+  function validateCount() {
+    var input = $('count');
+    var err = $('count-error');
+    if (!input || !err) return true;
+    var v = parseInt(input.value, 10);
+    var valid = !(isNaN(v) || v < 1 || v > 6);
+    err.style.display = valid ? 'none' : 'block';
+    return valid;
+  }
+
+  function initCount() {
+    var input = $('count');
+    if (input) input.addEventListener('input', validateCount);
+  }
+
+  // -------------------------------------------------------------------------
+  // 表单状态回传（result.html「重新规划」返回时还原）
+  // -------------------------------------------------------------------------
+  function readAddressState(prefix) {
+    return {
+      district: $(prefix + '_district').value,
+      street: $(prefix + '_street').value,
+      community: $(prefix + '_community').value,
+      manual: $(prefix + '_manual').value
+    };
+  }
+
+  function saveFormState() {
+    var form = $('plan-form');
+    var hikingRadio = form ? form.querySelector('input[name="hiking"]:checked') : null;
+    var state = {
+      origin: readAddressState('origin'),
+      destination: readAddressState('destination'),
+      hiking: hikingRadio ? hikingRadio.value : '是',
+      mustVisit: mustVisitItems.slice(),
+      count: $('count').value
+    };
+    sessionSet('trip_form_state', JSON.stringify(state));
+  }
+
+  function fireChange(sel) {
+    try { sel.dispatchEvent(new Event('change')); } catch (e) {}
+  }
+
+  function restoreAddress(prefix, st) {
+    if (!st) return;
+    var districtSel = $(prefix + '_district');
+    var streetSel = $(prefix + '_street');
+    var communitySel = $(prefix + '_community');
+    var manualInput = $(prefix + '_manual');
+
+    if (st.district) {
+      districtSel.value = st.district;
+      fireChange(districtSel);
+      if (st.street) {
+        streetSel.value = st.street;
+        fireChange(streetSel);
+        if (st.community) {
+          communitySel.value = st.community;
+          fireChange(communitySel);
+        }
+      }
+    }
+    if (st.manual) manualInput.value = st.manual;
+  }
+
+  function restoreFormState() {
+    var raw = sessionGet('trip_form_state');
+    if (!raw) return;
+    var st;
+    try { st = JSON.parse(raw); } catch (e) { return; }
+    if (!st) return;
+
+    restoreAddress('origin', st.origin);
+    restoreAddress('destination', st.destination);
+
+    if (st.hiking) {
+      var radios = document.querySelectorAll('input[name="hiking"]');
+      for (var i = 0; i < radios.length; i++) {
+        radios[i].checked = (radios[i].value === st.hiking);
+      }
+    }
+
+    mustVisitItems = (st.mustVisit || []).slice();
+    renderChips();
+
+    if (st.count != null && st.count !== '') $('count').value = st.count;
+    validateCount();
+  }
+
+  // -------------------------------------------------------------------------
   // 高德 JS SDK 动态加载（含 Geocoder / Walking / Driving 插件）
   // -------------------------------------------------------------------------
   function loadAMapSDK(key, securityCode) {
@@ -236,6 +399,15 @@
       };
       document.head.appendChild(s);
     });
+  }
+
+  function getSelectedAddress(prefix) {
+    var parts = [];
+    ['district', 'street', 'community'].forEach(function (kind) {
+      var sel = $(prefix + '_' + kind);
+      if (sel && !sel.disabled && sel.value) parts.push(sel.value);
+    });
+    return parts.join('');
   }
 
   // -------------------------------------------------------------------------
@@ -290,18 +462,12 @@
       }
       var hikingRadio = form.querySelector('input[name="hiking"]:checked');
       var hiking = hikingRadio ? (hikingRadio.value === '是') : true;
-      var countRaw = ($('count').value || '').trim();
-      var count = parseInt(countRaw, 10);
-      if (isNaN(count) || count < 1 || count > 6) {
-        showError('游玩景点数量必须在 1-6 之间');
+      if (!validateCount()) {
+        $('count').focus();
         return;
       }
-      var mustVisit = [];
-      var mustInputs = form.querySelectorAll('input[name="must_visit"]');
-      for (var i = 0; i < mustInputs.length; i++) {
-        var v = (mustInputs[i].value || '').trim();
-        if (v) mustVisit.push(v);
-      }
+      var count = parseInt(($('count').value || '').trim(), 10);
+      var mustVisit = mustVisitItems.slice();
 
       // SDK 需要 JS API Key + 安全密钥
       var sdkKey = jsKey;
@@ -324,10 +490,10 @@
         return window.TripEngine.planTrip(origin, destination, hiking, mustVisit, count, sdkKey);
       }).then(function (plan) {
         console.log('[main] 规划成功，写入 sessionStorage 并跳转');
+        saveFormState();
         try {
           sessionStorage.setItem('trip_plan_result', JSON.stringify(plan));
         } catch (err) {
-          // 存储不可用时给出明确提示并恢复按钮
           resetSubmitBtn();
           alert('浏览器本地存储不可用，无法传递结果：' + (err && err.message ? err.message : err));
           return;
@@ -341,22 +507,16 @@
     });
   }
 
-  function getSelectedAddress(prefix) {
-    var parts = [];
-    ['district', 'street', 'community'].forEach(function (kind) {
-      var sel = $(prefix + '_' + kind);
-      if (sel && !sel.disabled && sel.value) parts.push(sel.value);
-    });
-    return parts.join('');
-  }
-
   // -------------------------------------------------------------------------
   // 启动
   // -------------------------------------------------------------------------
   function init() {
     initKeys();
     if (window.TripEngine) initAddressSelectors();
+    initMustVisit();
+    initCount();
     bindForm();
+    restoreFormState();
   }
 
   if (document.readyState === 'loading') {

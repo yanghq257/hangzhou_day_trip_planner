@@ -3,64 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>杭州一日路线规划器</title>
+  <title>杭州主城区游玩锻炼路线规划</title>
   <link rel="stylesheet" href="static/style.css">
-  <style>
-    /* 仅前端 UI：同一组地址的三级下拉放在同一个边框主容器内 */
-    .cascade-box {
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px;
-      background: #fafbfc;
-      margin-bottom: 8px;
-    }
-    .cascade-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .cascade-row select.cascade {
-      flex: 1 1 150px;
-      margin-bottom: 0;
-    }
-    .selected-address {
-      min-height: 38px;
-      padding: 9px 12px;
-      margin-bottom: 10px;
-      background: #fff;
-      border: 1px dashed var(--border);
-      border-radius: 8px;
-      font-size: 14px;
-      color: var(--text);
-      word-break: break-all;
-    }
-    .selected-address.empty {
-      color: var(--muted);
-    }
-    .manual-address {
-      margin-top: 4px;
-    }
-    .manual-address .manual-title {
-      display: block;
-      font-size: 12px;
-      color: var(--muted);
-      margin-bottom: 4px;
-    }
-    .key-actions {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      margin-top: 6px;
-    }
-    .key-actions label {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      color: var(--muted);
-      cursor: pointer;
-    }
-  </style>
   <script type="text/javascript">
     (function () {
       var code = '';
@@ -74,24 +18,29 @@
 <body>
   <div class="container">
     <header>
-      <h1>杭州主城区游玩锻炼一日路线规划器</h1>
-      <p class="subtitle">纯规则引擎 · 不调用任何大模型 · 高德 JS API + 内置景点库 · 浏览器本地计算</p>
+      <h1>杭州主城区游玩锻炼路线规划</h1>
+      <p class="subtitle">登录 lbs.amap.com 注册配置高德 JS API Key 与安全密钥</p>
     </header>
 
     <div class="alert alert-error" id="form-error" style="display:none;"></div>
 
     <form class="card" id="plan-form">
-      <div class="field">
-        <span>高德 JS API Key（用于地理编码、路线计算与地图渲染）</span>
-        <input type="password" name="amap_js_api_key" id="amap_js_api_key" placeholder="必填，用于地理编码与步行/驾车路径" autocomplete="off">
-        <span>高德安全密钥（securityJsCode，配合 JS API Key 使用）</span>
-        <input type="password" name="amap_js_security_code" id="amap_js_security_code" placeholder="必填，高德 JS API 2.0 安全密钥" autocomplete="off">
-        <div class="key-actions">
-          <label><input type="checkbox" id="save_keys"> 保存到本机（Key + 安全密钥）</label>
-          <button type="button" id="keys_clear" class="btn btn-ghost">清除</button>
+      <details class="advanced" id="advanced-config">
+        <summary>高级配置</summary>
+        <div class="advanced-body">
+          <div class="field">
+            <span>高德 JS API Key</span>
+            <input type="password" id="amap_js_api_key" placeholder="必填，用于地理编码与步行/驾车路径" autocomplete="off">
+            <span>高德安全密钥（securityJsCode）</span>
+            <input type="password" id="amap_js_security_code" placeholder="必填，高德 JS API 2.0 安全密钥" autocomplete="off">
+            <div class="key-actions">
+              <label><input type="checkbox" id="save_keys"> 保存到本机（Key + 安全密钥）</label>
+              <button type="button" id="keys_clear" class="btn btn-ghost">清除</button>
+            </div>
+            <p class="hint" id="keys_hint" style="display:none;">已保存到本机（localStorage），下次打开自动填充</p>
+          </div>
         </div>
-        <p class="hint" id="keys_hint" style="display:none;">已保存到本机（localStorage），下次打开自动填充</p>
-      </div>
+      </details>
 
       <div class="field">
         <span>出发地址</span>
@@ -138,7 +87,7 @@
       </div>
 
       <fieldset class="field">
-        <legend>是否爬山</legend>
+        <legend>🥾 是否爬山</legend>
         <div class="radio-row">
           <label><input type="radio" name="hiking" value="是" checked> 是</label>
           <label><input type="radio" name="hiking" value="否"> 否</label>
@@ -146,32 +95,29 @@
       </fieldset>
 
       <div class="field">
-        <span>必去景点（可多条，0 条也允许）</span>
-        <div id="must-visit-list">
-          <input type="text" name="must_visit" value="" placeholder="例如：龙井村">
+        <span>🏔️ 必去景点</span>
+        <div class="must-visit-add">
+          <input type="text" id="must-visit-input" placeholder="输入景点名，如：龙井村" autocomplete="off">
+          <button type="button" class="btn btn-ghost" id="must-visit-add">添加</button>
         </div>
-        <button type="button" class="btn btn-ghost" onclick="addMustVisit()">+ 添加必去景点</button>
+        <div class="chips" id="must-visit-chips"></div>
+        <p class="hint">可留空，最多添加 6 个景点</p>
+        <p class="field-error" id="must-visit-error" style="display:none;">最多添加 6 个景点</p>
       </div>
 
-      <label class="field">
-        <span>游玩景点数量（1-6）</span>
-        <input type="number" name="count" id="count" min="1" max="6" value="3" required>
-      </label>
+      <div class="field">
+        <span>🎯 游玩景点数量</span>
+        <div class="count-row">
+          <input type="number" id="count" min="1" max="6" value="3" inputmode="numeric">
+          <span class="count-unit">1-6 个</span>
+        </div>
+        <p class="field-error" id="count-error" style="display:none;">游玩景点数量必须在 1-6 之间</p>
+      </div>
 
-      <button type="submit" class="btn btn-primary">生成路线</button>
+      <button type="submit" class="btn btn-primary" id="submit-btn">生成路线</button>
     </form>
   </div>
 
-  <script>
-    function addMustVisit() {
-      var list = document.getElementById('must-visit-list');
-      var input = document.createElement('input');
-      input.type = 'text';
-      input.name = 'must_visit';
-      input.placeholder = '例如：三潭印月';
-      list.appendChild(input);
-    }
-  </script>
   <script src="js/trip-engine.js"></script>
   <script src="js/main.js"></script>
 </body>

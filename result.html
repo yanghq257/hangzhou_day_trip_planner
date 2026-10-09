@@ -5,131 +5,38 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>路线规划结果</title>
   <link rel="stylesheet" href="static/style.css">
-  <style>
-    .map-settings {
-      margin-bottom: 12px;
-    }
-    .map-settings summary {
-      cursor: pointer;
-      color: var(--primary);
-      font-size: 13px;
-    }
-    .map-settings-body {
-      margin-top: 10px;
-    }
-    .map-settings-body input[type="password"] {
-      width: 100%;
-      padding: 9px 10px;
-      font-size: 15px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      margin-bottom: 8px;
-    }
-    #map-container {
-      position: relative;
-    }
-    #map {
-      width: 100%;
-      height: 480px;
-      display: none;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-    }
-    .map-legend {
-      position: absolute;
-      right: 10px;
-      bottom: 10px;
-      z-index: 10;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px 12px;
-      background: rgba(255, 255, 255, 0.94);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 8px 10px;
-      font-size: 12px;
-      color: var(--text);
-    }
-    .map-legend .legend-line {
-      display: inline-block;
-      width: 18px;
-      height: 4px;
-      border-radius: 2px;
-      vertical-align: middle;
-      margin-right: 4px;
-    }
-    .map-legend .legend-dot {
-      display: inline-block;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      vertical-align: middle;
-      margin-right: 4px;
-    }
-    .key-actions {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      margin-bottom: 8px;
-    }
-    .key-actions label {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      color: var(--muted);
-      cursor: pointer;
-    }
-  </style>
 </head>
 <body>
   <div class="container">
-    <header>
-      <h1>路线规划结果</h1>
-      <p class="subtitle">纯规则引擎生成 · 无大模型参与 · 浏览器本地计算</p>
-    </header>
-
-    <div class="alert alert-error" id="no-plan" style="display:none;">
-      未找到行程结果，请先在<a href="index.html">规划页</a>生成路线。
+    <div class="topbar">
+      <button type="button" class="btn-back" id="back-btn">← 返回</button>
+      <h1 class="topbar-title">路线规划结果</h1>
     </div>
 
-    <div class="card summary">
-      <div class="summary-grid">
-        <div><span class="label">出发</span><strong id="summary-origin">-</strong></div>
-        <div><span class="label">返回</span><strong id="summary-destination">-</strong></div>
-        <div><span class="label">是否爬山</span><strong id="summary-hiking">-</strong></div>
-        <div><span class="label">总时长</span><strong id="summary-total">-</strong></div>
-        <div><span class="label">路上耗时</span><strong id="summary-travel">-</strong></div>
-        <div><span class="label">游玩时长</span><strong id="summary-visit">-</strong></div>
+    <div class="alert alert-error" id="no-plan" style="display:none;">
+      未找到行程结果，请先在<a href="index.html" style="color:var(--primary);">规划页</a>生成路线。
+    </div>
+
+    <div class="card">
+      <h2>📊 行程概览</h2>
+      <div class="overview-grid">
+        <div><span class="label">总时长</span><strong id="overview-total">-</strong></div>
+        <div><span class="label">总距离</span><strong id="overview-distance">-</strong></div>
+        <div><span class="label">是否爬山</span><strong id="overview-hiking">-</strong></div>
+        <div><span class="label">出发</span><strong id="overview-origin">-</strong></div>
+        <div><span class="label">返回</span><strong id="overview-destination">-</strong></div>
+        <div><span class="label">景点数量</span><strong id="overview-count">-</strong></div>
       </div>
     </div>
 
     <div class="card" id="warnings-card" style="display:none;">
-      <h2>风险校验提示</h2>
+      <h2>⚠️ 风险提示</h2>
       <ul class="warnings" id="warnings-list"></ul>
     </div>
     <div class="alert alert-success" id="success-alert" style="display:none;">各项校验通过，未发现明显风险。</div>
 
     <div class="card">
-      <h2>景点安排</h2>
-      <ol class="spot-list" id="spot-list"></ol>
-    </div>
-
-    <div class="card">
-      <h2>完整时间轴</h2>
-      <div class="table-wrap">
-        <table class="timeline">
-          <thead>
-            <tr><th>时间</th><th>类型</th><th>内容</th><th>耗时</th></tr>
-          </thead>
-          <tbody id="timeline-body"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>路线地图</h2>
-
+      <h2>🗺️ 路线地图</h2>
       <details class="map-settings">
         <summary>地图设置（高德 JS API Key + 安全密钥）</summary>
         <div class="map-settings-body">
@@ -148,16 +55,35 @@
       <div id="map-container">
         <div id="map"></div>
         <div class="map-legend">
-          <span><i class="legend-line" style="background:#888888;"></i>步行</span>
-          <span><i class="legend-line" style="background:#e53935;"></i>打车</span>
-          <span><i class="legend-line" style="background:#1e88e5;"></i>游船</span>
-          <span><i class="legend-dot" style="background:#2e7d32;"></i>登山点</span>
+          <span><i class="legend-line" style="background:#38bdf8;"></i>自驾/接驳</span>
+          <span><i class="legend-line dash"></i>爬山连通</span>
+          <span><i class="legend-dot" style="background:#4ade80;"></i>登山点</span>
         </div>
       </div>
     </div>
 
-    <a class="btn btn-primary btn-block" href="index.html">重新规划</a>
+    <div class="card">
+      <h2>🕒 行程时间轴</h2>
+      <div class="timeline-list" id="timeline-list"></div>
+    </div>
+
+    <div class="card">
+      <h2>📋 温馨提示</h2>
+      <ul class="notes" id="notes-list"></ul>
+    </div>
+
+    <div class="card">
+      <h2>景点安排</h2>
+      <ol class="spot-list" id="spot-list"></ol>
+    </div>
+
+    <div class="bottom-actions">
+      <button type="button" class="btn btn-ghost" id="replan-btn">重新规划</button>
+      <button type="button" class="btn btn-primary" id="copy-btn">复制行程文本</button>
+    </div>
   </div>
+
+  <div class="toast" id="toast"></div>
 
   <script>
     (function () {
@@ -167,6 +93,16 @@
         return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
           return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
         });
+      }
+
+      function $(id) { return document.getElementById(id); }
+
+      function showToast(msg) {
+        var toast = $('toast');
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.add('show');
+        setTimeout(function () { toast.classList.remove('show'); }, 1600);
       }
 
       // ---------- 读取本地计算结果 ----------
@@ -179,34 +115,64 @@
       }
 
       if (!plan) {
-        document.getElementById('no-plan').style.display = 'block';
+        $('no-plan').style.display = 'block';
         return;
       }
 
-      // ---------- 渲染摘要 ----------
-      document.getElementById('summary-origin').textContent = plan.origin;
-      document.getElementById('summary-destination').textContent = plan.destination;
-      document.getElementById('summary-hiking').textContent = plan.hiking;
-      document.getElementById('summary-total').textContent = '约 ' + plan.total_minutes + ' 分钟';
-      document.getElementById('summary-travel').textContent = '约 ' + plan.travel_total + ' 分钟';
-      document.getElementById('summary-visit').textContent = '约 ' + plan.visit_total + ' 分钟';
+      function formatMinutes(min) {
+        min = parseInt(min, 10) || 0;
+        if (min < 60) return min + ' 分钟';
+        var h = Math.floor(min / 60);
+        var m = min % 60;
+        return m ? (h + ' 小时 ' + m + ' 分') : (h + ' 小时');
+      }
+
+      function haversineKm(lng1, lat1, lng2, lat2) {
+        var R = 6371;
+        var dLat = (lat2 - lat1) * Math.PI / 180;
+        var dLng = (lng2 - lng1) * Math.PI / 180;
+        var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+          Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+
+      function totalDistanceKm(legs) {
+        var sum = 0;
+        (legs || []).forEach(function (leg) {
+          var pl = leg.polyline || [];
+          for (var i = 0; i < pl.length - 1; i++) {
+            sum += haversineKm(pl[i][0], pl[i][1], pl[i + 1][0], pl[i + 1][1]);
+          }
+        });
+        return sum;
+      }
+
+      // ---------- 渲染概览 ----------
+      var spots = plan.spots || [];
+      $('overview-total').textContent = formatMinutes(plan.total_minutes);
+      $('overview-distance').textContent = totalDistanceKm(plan.legs).toFixed(1) + ' km';
+      $('overview-hiking').textContent = plan.hiking;
+      $('overview-origin').textContent = plan.origin;
+      $('overview-destination').textContent = plan.destination;
+      $('overview-count').textContent = spots.length + ' 个';
 
       // ---------- 渲染风险提示 ----------
       if (plan.warnings && plan.warnings.length) {
-        document.getElementById('warnings-card').style.display = 'block';
-        var wl = document.getElementById('warnings-list');
+        $('warnings-card').style.display = 'block';
+        var wl = $('warnings-list');
         plan.warnings.forEach(function (w) {
           var li = document.createElement('li');
           li.textContent = w;
           wl.appendChild(li);
         });
       } else {
-        document.getElementById('success-alert').style.display = 'block';
+        $('success-alert').style.display = 'block';
       }
 
       // ---------- 渲染景点 ----------
-      var spotList = document.getElementById('spot-list');
-      (plan.spots || []).forEach(function (p) {
+      var spotList = $('spot-list');
+      spots.forEach(function (p) {
         var li = document.createElement('li');
         var title = document.createElement('div');
         title.className = 'spot-title';
@@ -224,51 +190,139 @@
       });
 
       // ---------- 渲染时间轴 ----------
-      var tbody = document.getElementById('timeline-body');
-      (plan.timeline || []).forEach(function (s) {
-        var tr = document.createElement('tr');
-        tr.className = 'row-' + (s['类型'] || '');
+      function renderTimeline() {
+        var list = $('timeline-list');
+        (plan.timeline || []).forEach(function (s) {
+          var type = s['类型'] || '';
+          var isHikeActivity = (type === '活动' && s['是否登山']);
+          var isHikeMove = (type === '交通' && (s['方式'] || '') === '步行');
 
-        var tdTime = document.createElement('td');
-        var timeText = s['时间'] || '';
-        if (s['结束时间']) timeText += ' - ' + s['结束时间'];
-        tdTime.textContent = timeText;
+          var item = document.createElement('div');
+          item.className = 'tl-item';
 
-        var tdType = document.createElement('td');
-        tdType.textContent = s['类型'] || '';
-
-        var tdContent = document.createElement('td');
-        if (s['类型'] === '交通') {
-          tdContent.textContent = (s['起点'] || '') + ' → ' + (s['终点'] || '') + '（' + (s['方式'] || '') + '）';
-        } else if (s['类型'] === '活动') {
-          tdContent.textContent = s['地点'] || '';
-          if (s['是否登山']) {
-            var tagHike = document.createElement('span');
-            tagHike.className = 'tag tag-hike';
-            tagHike.textContent = '登山';
-            tdContent.appendChild(document.createTextNode(' '));
-            tdContent.appendChild(tagHike);
+          var rail = document.createElement('div');
+          rail.className = 'tl-rail';
+          var dot = document.createElement('span');
+          if (type === '交通') {
+            dot.className = isHikeMove ? 'tl-dot hollow-hike' : 'tl-dot hollow';
+          } else if (isHikeActivity) {
+            dot.className = 'tl-dot hike';
+          } else {
+            dot.className = 'tl-dot solid';
           }
-          if (s['是否孤岛']) {
-            var tagBoat = document.createElement('span');
-            tagBoat.className = 'tag tag-boat';
-            tagBoat.textContent = '孤岛';
-            tdContent.appendChild(document.createTextNode(' '));
-            tdContent.appendChild(tagBoat);
+          rail.appendChild(dot);
+          item.appendChild(rail);
+
+          var body = document.createElement('div');
+          body.className = 'tl-body';
+
+          var time = document.createElement('div');
+          time.className = 'tl-time';
+          var timeText = s['时间'] || '';
+          if (s['结束时间']) timeText += ' - ' + s['结束时间'];
+          time.textContent = timeText;
+          body.appendChild(time);
+
+          var title = document.createElement('div');
+          title.className = 'tl-title';
+          if (type === '交通') {
+            title.textContent = (s['起点'] || '') + ' → ' + (s['终点'] || '');
+          } else {
+            title.textContent = (type ? type + ' · ' : '') + (s['地点'] || '');
           }
-        } else {
-          tdContent.textContent = s['地点'] || '';
-        }
+          body.appendChild(title);
 
-        var tdCost = document.createElement('td');
-        tdCost.textContent = s['耗时分钟'] ? (s['耗时分钟'] + ' 分钟') : '';
+          var sub = document.createElement('div');
+          sub.className = 'tl-sub';
+          var parts = [];
+          if (type === '交通') {
+            if (s['方式']) parts.push(s['方式']);
+            if (s['耗时分钟']) parts.push(s['耗时分钟'] + ' 分钟');
+          } else if (type === '活动') {
+            if (s['停留分钟']) parts.push('停留 ' + s['停留分钟'] + ' 分钟');
+          } else if (s['耗时分钟']) {
+            parts.push(s['耗时分钟'] + ' 分钟');
+          }
+          sub.textContent = parts.join(' · ');
+          body.appendChild(sub);
 
-        tr.appendChild(tdTime);
-        tr.appendChild(tdType);
-        tr.appendChild(tdContent);
-        tr.appendChild(tdCost);
-        tbody.appendChild(tr);
+          if (isHikeActivity) {
+            var note = document.createElement('span');
+            note.className = 'tl-note';
+            note.textContent = '登山徒步 · 注意防滑补水';
+            body.appendChild(note);
+          }
+
+          item.appendChild(body);
+          list.appendChild(item);
+        });
+      }
+      renderTimeline();
+
+      // ---------- 渲染温馨提示 ----------
+      var notes = [];
+      notes.push('路线与耗时由高德地图实时估算，实际以现场交通为准。');
+      if (plan.hiking === '是') {
+        notes.push('行程包含登山路段，请穿防滑运动鞋，量力而行并及时补水。');
+      }
+      notes.push('本行程由本地规则引擎生成，不调用任何大模型。');
+      var notesList = $('notes-list');
+      notes.forEach(function (n) {
+        var li = document.createElement('li');
+        li.textContent = n;
+        notesList.appendChild(li);
       });
+
+      // ---------- 复制行程文本 ----------
+      function buildCopyText() {
+        var lines = [];
+        lines.push('【杭州一日路线规划】');
+        lines.push('出发：' + plan.origin);
+        lines.push('返回：' + plan.destination);
+        lines.push('是否爬山：' + plan.hiking);
+        lines.push('总时长：' + formatMinutes(plan.total_minutes));
+        lines.push('总距离：' + totalDistanceKm(plan.legs).toFixed(1) + ' km');
+        lines.push('景点数量：' + spots.length + ' 个');
+        lines.push('');
+        lines.push('行程安排：');
+        (plan.timeline || []).forEach(function (s) {
+          if (s['类型'] === '交通') {
+            lines.push(s['时间'] + ' ' + (s['起点'] || '') + ' → ' + (s['终点'] || '') + '（' + (s['方式'] || '') + ' ' + (s['耗时分钟'] || '') + ' 分钟）');
+          } else if (s['类型'] === '活动') {
+            lines.push(s['时间'] + ' 游玩 ' + (s['地点'] || '') + '（停留 ' + (s['停留分钟'] || '') + ' 分钟）');
+          } else {
+            lines.push(s['时间'] + ' ' + (s['类型'] || '') + ' ' + (s['地点'] || ''));
+          }
+        });
+        return lines.join('\n');
+      }
+
+      function fallbackCopy(text) {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        var ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        document.body.removeChild(ta);
+        return ok;
+      }
+
+      function copyItinerary() {
+        var text = buildCopyText();
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () {
+            showToast('复制成功');
+          }, function () {
+            showToast(fallbackCopy(text) ? '复制成功' : '复制失败');
+          });
+        } else {
+          showToast(fallbackCopy(text) ? '复制成功' : '复制失败');
+        }
+      }
 
       // ---------- 动态地图 ----------
       var mapData = {
@@ -280,37 +334,38 @@
         destination_name: plan.destination,
         legs: plan.legs || [],
         spots: plan.spots || [],
-        hiking_markers: plan.hiking_markers || []
+        hiking_markers: plan.hiking_markers || [],
+        hiking_trails: plan.hiking_trails || []
       };
 
-      var MODE_COLORS = { '步行': '#888888', '打车': '#e53935', '游船': '#1e88e5' };
+      var LEG_COLOR = '#38bdf8';
+      var HIKE_COLOR = '#4ade80';
       var map = null;
       var infoWindow = null;
 
       function markerHTML(bg, label) {
-        return '<div style="background:' + bg + ';color:#fff;width:26px;height:26px;line-height:22px;text-align:center;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);font-size:12px;font-weight:bold;">' + label + '</div>';
+        return '<div style="background:' + bg + ';color:#06121c;width:26px;height:26px;line-height:22px;text-align:center;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);font-size:12px;font-weight:bold;">' + label + '</div>';
       }
 
       function addMarker(lng, lat, title, desc, type) {
         var bg, label;
-        if (type === 'start') { bg = '#0052d9'; label = '起'; }
-        else if (type === 'end') { bg = '#c62828'; label = '终'; }
-        else if (type === 'hiking') { bg = '#2e7d32'; label = '山'; }
-        else { bg = '#0f6fde'; label = '●'; }
+        if (type === 'start') { bg = '#38bdf8'; label = '起'; }
+        else if (type === 'end') { bg = '#ef4444'; label = '终'; }
+        else if (type === 'hiking') { bg = '#4ade80'; label = '山'; }
+        else { bg = '#38bdf8'; label = '●'; }
 
         var marker = new AMap.Marker({
           position: [lng, lat],
           content: markerHTML(bg, label),
           offset: new AMap.Pixel(-13, -13)
         });
-        marker.on('mouseover', function () {
+        marker.on('click', function () {
           var html = '<div style="max-width:240px;"><strong>' + esc(title) + '</strong>';
-          if (desc) html += '<div style="color:#555;font-size:12px;margin-top:2px;">' + esc(desc) + '</div>';
+          if (desc) html += '<div style="color:#cbd5e1;font-size:12px;margin-top:2px;">' + esc(desc) + '</div>';
           html += '</div>';
           infoWindow.setContent(html);
           infoWindow.open(map, marker.getPosition());
         });
-        marker.on('mouseout', function () { infoWindow.close(); });
         marker.setMap(map);
       }
 
@@ -320,10 +375,25 @@
           if (!path.length) return;
           var polyline = new AMap.Polyline({
             path: path,
-            strokeColor: MODE_COLORS[leg.mode] || '#888888',
+            strokeColor: LEG_COLOR,
             strokeWeight: 5,
-            strokeOpacity: 0.85,
+            strokeOpacity: 0.9,
             strokeStyle: 'solid',
+            lineJoin: 'round'
+          });
+          polyline.setMap(map);
+        });
+      }
+
+      function drawHikingTrails() {
+        mapData.hiking_trails.forEach(function (trail) {
+          if (!trail || trail.length < 2) return;
+          var polyline = new AMap.Polyline({
+            path: trail.map(function (p) { return [p[0], p[1]]; }),
+            strokeColor: HIKE_COLOR,
+            strokeWeight: 4,
+            strokeOpacity: 0.95,
+            strokeStyle: 'dashed',
             lineJoin: 'round'
           });
           polyline.setMap(map);
@@ -356,6 +426,9 @@
         mapData.legs.forEach(function (leg) {
           (leg.polyline || []).forEach(function (p) { push(p[0], p[1]); });
         });
+        mapData.hiking_trails.forEach(function (trail) {
+          trail.forEach(function (p) { push(p[0], p[1]); });
+        });
         if (!lngs.length) return;
         var minLng = Math.min.apply(null, lngs);
         var maxLng = Math.max.apply(null, lngs);
@@ -368,6 +441,7 @@
         map = new AMap.Map('map', { zoom: 12 });
         infoWindow = new AMap.InfoWindow({ offset: new AMap.Pixel(0, -28), closeWhenClickMap: true });
         drawLegs();
+        drawHikingTrails();
         drawMarkers();
         fitAll();
       }
@@ -388,12 +462,12 @@
       }
 
       // ---------- JS API Key + 安全密钥 记忆 ----------
-      var jsKeyInput = document.getElementById('js_api_key');
-      var jsSecurityInput = document.getElementById('js_security_code');
-      var jsKeySaveBox = document.getElementById('js_api_key_save');
-      var jsSecuritySaveBox = document.getElementById('js_security_code_save');
-      var jsKeyClearBtn = document.getElementById('js_api_key_clear');
-      var jsKeyHint = document.getElementById('js_api_key_hint');
+      var jsKeyInput = $('js_api_key');
+      var jsSecurityInput = $('js_security_code');
+      var jsKeySaveBox = $('js_api_key_save');
+      var jsSecuritySaveBox = $('js_security_code_save');
+      var jsKeyClearBtn = $('js_api_key_clear');
+      var jsKeyHint = $('js_api_key_hint');
 
       function renderJsKeyHint() {
         var saved = false;
@@ -421,7 +495,7 @@
       autoFillKeys();
 
       if (jsKeyInput.value.trim() && jsSecurityInput.value.trim()) {
-        document.getElementById('map').style.display = 'block';
+        $('map').style.display = 'block';
         loadAMap(jsKeyInput.value.trim(), jsSecurityInput.value.trim(), initMap);
       }
 
@@ -441,23 +515,19 @@
 
       jsKeySaveBox.addEventListener('change', function () {
         if (!jsKeySaveBox.checked) {
-          try {
-            localStorage.removeItem('amap_js_api_key');
-          } catch (e) {}
+          try { localStorage.removeItem('amap_js_api_key'); } catch (e) {}
           renderJsKeyHint();
         }
       });
 
       jsSecuritySaveBox.addEventListener('change', function () {
         if (!jsSecuritySaveBox.checked) {
-          try {
-            localStorage.removeItem('amap_js_security_code');
-          } catch (e) {}
+          try { localStorage.removeItem('amap_js_security_code'); } catch (e) {}
           renderJsKeyHint();
         }
       });
 
-      document.getElementById('init-map-btn').addEventListener('click', function () {
+      $('init-map-btn').addEventListener('click', function () {
         var key = jsKeyInput.value.trim();
         var securityCode = jsSecurityInput.value.trim();
         if (!key || !securityCode) { alert('请填写高德JS API Key 和安全密钥'); return; }
@@ -476,9 +546,18 @@
           }
           renderJsKeyHint();
         } catch (e) {}
-        document.getElementById('map').style.display = 'block';
+        $('map').style.display = 'block';
         loadAMap(key, securityCode, initMap);
       });
+
+      // ---------- 返回 / 重新规划 / 复制 ----------
+      $('back-btn').addEventListener('click', function () {
+        window.location.href = 'index.html';
+      });
+      $('replan-btn').addEventListener('click', function () {
+        window.location.href = 'index.html';
+      });
+      $('copy-btn').addEventListener('click', copyItinerary);
     })();
   </script>
 </body>
