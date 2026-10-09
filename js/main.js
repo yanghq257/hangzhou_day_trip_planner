@@ -392,7 +392,7 @@
       };
       var s = document.createElement('script');
       s.src = 'https://webapi.amap.com/maps?v=2.0&key=' + encodeURIComponent(key) +
-        '&callback=' + cbName + '&plugin=AMap.Geocoder,AMap.Walking,AMap.Driving';
+        '&callback=' + cbName + '&plugin=AMap.Geocoder,AMap.Walking,AMap.Driving,AMap.Transfer,AMap.PlaceSearch';
       s.onerror = function () {
         try { delete window[cbName]; } catch (e) {}
         reject(new Error('高德 JS API 加载失败，请检查 JS API Key 与网络'));
