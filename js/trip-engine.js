@@ -811,6 +811,7 @@
       if (!global.AMap || !global.AMap.Walking) { resolve(null); return; }
       var walking = new global.AMap.Walking({});
       walking.search([lng1, lat1], [lng2, lat2], function (status, result) {
+        console.log('[步行查询] status:', status, '有结果:', !!(result && result.routes && result.routes.length));
         if (status === 'complete' && result && result.routes && result.routes.length) {
           resolve(parseDirection(result.routes[0]));
         } else {
@@ -881,6 +882,7 @@
             }
 
             var km = haversineKm(s_lng, s_lat, e_lng, e_lat);
+            console.log('[步行查询] 起点:', startName, '终点:', endName);
             return amapWalking(s_lng, s_lat, e_lng, e_lat, key).then(function (walk) {
               var walkMin = walk ? walk.duration_min : estimateWalkMinutes(km);
               var walkPolyline = walk ? walk.polyline : null;
