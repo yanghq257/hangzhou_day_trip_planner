@@ -43,7 +43,7 @@
       </details>
 
       <div class="field">
-        <span>出发地址</span>
+        <span>📍 出发地址</span>
         <div class="cascade-box">
           <div class="selected-address empty" id="origin_display">未选择（请通过下方下拉选择小区）</div>
           <div class="cascade-row">
@@ -65,7 +65,7 @@
       </div>
 
       <div class="field">
-        <span>返回地址</span>
+        <span>📍 返回地址</span>
         <div class="cascade-box">
           <div class="selected-address empty" id="destination_display">未选择（请通过下方下拉选择小区）</div>
           <div class="cascade-row">
@@ -98,7 +98,7 @@
         <span>🏔️ 必去景点</span>
         <div class="must-visit-add">
           <input type="text" id="must-visit-input" placeholder="输入景点名，如：龙井村" autocomplete="off">
-          <button type="button" class="btn btn-ghost" id="must-visit-add">添加</button>
+          <button type="button" class="btn btn-ghost" id="must-visit-add">+添加</button>
         </div>
         <div class="chips" id="must-visit-chips"></div>
         <p class="hint">可留空，最多添加 6 个景点</p>
@@ -108,10 +108,18 @@
       <div class="field">
         <span>🎯 游玩景点数量</span>
         <div class="count-row">
-          <input type="number" id="count" min="1" max="6" value="3" inputmode="numeric">
+          <input type="number" id="count" min="1" max="6" value="3" inputmode="numeric" list="count-options">
           <span class="count-unit">1-6 个</span>
         </div>
-        <p class="field-error" id="count-error" style="display:none;">游玩景点数量必须在 1-6 之间</p>
+        <datalist id="count-options">
+          <option value="1"></option>
+          <option value="2"></option>
+          <option value="3"></option>
+          <option value="4"></option>
+          <option value="5"></option>
+          <option value="6"></option>
+        </datalist>
+        <p class="field-error" id="count-error" style="display:none;">请输入1-6之间的数字</p>
       </div>
 
       <button type="submit" class="btn btn-primary" id="submit-btn">生成路线</button>

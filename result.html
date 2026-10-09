@@ -260,10 +260,14 @@
       renderTimeline();
 
       // ---------- 渲染温馨提示 ----------
+      var hasConnectedHike = (plan.spots || []).some(function (p) { return p.connected_hiking; });
       var notes = [];
       notes.push('路线与耗时由高德地图实时估算，实际以现场交通为准。');
       if (plan.hiking === '是') {
         notes.push('行程包含登山路段，请穿防滑运动鞋，量力而行并及时补水。');
+      }
+      if (hasConnectedHike) {
+        notes.push('部分登山路段为连通步道，沿山脊线串联，请留意路标与岔口。');
       }
       notes.push('本行程由本地规则引擎生成，不调用任何大模型。');
       var notesList = $('notes-list');
