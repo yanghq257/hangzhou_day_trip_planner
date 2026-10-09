@@ -817,7 +817,7 @@
           resolve(null);
         }
       });
-    }), 8000, '步行路线请求超时');
+    }), 30000, '步行路线请求超时');
   }
 
   function amapDriving(lng1, lat1, lng2, lat2, key) {
@@ -1140,7 +1140,7 @@
       });
     });
 
-    return withTimeout(work, 12000, '规划超时，请减少景点数量重试').catch(function (err) {
+    return withTimeout(work, 60000, '规划超时，请减少景点数量重试').catch(function (err) {
       console.error('[planTrip] 规划异常', err);
       throw err;
     });
