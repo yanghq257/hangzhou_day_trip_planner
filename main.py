@@ -67,6 +67,8 @@ async def address_tree():
 @app.post("/plan", response_class=HTMLResponse)
 async def plan(request: Request):
     form = await request.form()
+    print("===== /plan 接口收到请求 =====")
+    print("收到/plan请求，原始入参:", dict(form))
 
     origin = (form.get("origin") or "").strip()
     destination = (form.get("destination") or "").strip()
@@ -114,8 +116,10 @@ async def plan(request: Request):
             origin, destination, hiking_bool, must_visit, count, key
         )
     except utils.PlanError as exc:
+        print("规划发生异常：", exc)
         return render_index(str(exc))
     except Exception as exc:  # 兜底：任何意外都不让程序崩溃
+        print("规划发生异常：", exc)
         return render_index(f"规划过程出现异常：{exc}")
 
     return templates.TemplateResponse(request, "result.html", {

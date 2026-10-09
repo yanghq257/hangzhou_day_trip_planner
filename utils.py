@@ -764,7 +764,9 @@ def build_legs(origin_geo, dest_geo, route, key):
                 e_lng, e_lat = end["lng"], end["lat"]
 
             km = haversine_km(s_lng, s_lat, e_lng, e_lat)
+            print("【即将调用高德路线API】")
             walk = amap_walking(s_lng, s_lat, e_lng, e_lat, key)
+            print("【高德路线API调用完成】")
             walk_min = walk["duration_min"] if walk else _estimate_walk_minutes(km)
             walk_polyline = walk["polyline"] if walk else None
 
@@ -773,7 +775,9 @@ def build_legs(origin_geo, dest_geo, route, key):
                 leg["duration_min"] = walk_min
                 leg["polyline"] = walk_polyline or [(s_lng, s_lat), (e_lng, e_lat)]
             else:
+                print("【即将调用高德路线API】")
                 drive = amap_driving(s_lng, s_lat, e_lng, e_lat, key)
+                print("【高德路线API调用完成】")
                 drive_min = drive["duration_min"] if drive else _estimate_drive_minutes(km)
                 drive_polyline = drive["polyline"] if drive else None
                 leg["mode"] = "打车"
@@ -922,140 +926,151 @@ def build_static_map(origin_geo, dest_geo, route, legs, key):
 # ---------------------------------------------------------------------------
 def plan_trip(origin_addr, destination_addr, hiking_bool, must_visit_raw, count, key):
     """纯规则引擎规划入口，返回完整方案 dict；失败抛出 PlanError。"""
-    if not key:
-        raise PlanError("请先填写高德 API Key")
+    print("==== plan_trip 开始执行 ====")
+    try:
+        if not key:
+            raise PlanError("请先填写高德 API Key")
 
-    origin_geo = resolve_address(origin_addr, key)
-    dest_geo = resolve_address(destination_addr, key)
-    warnings = []
+        print("开始执行地址解析")
+        origin_geo = resolve_address(origin_addr, key)
+        dest_geo = resolve_address(destination_addr, key)
+        print("地址解析完成，结果：", origin_geo, dest_geo)
+        warnings = []
 
-    # 1) 景点池：是否爬山决定是否过滤登山点位
-    if hiking_bool:
-        pool = list(PLACES)
-    else:
-        pool = [p for p in PLACES if not p["is_hiking"]]
-
-    # 2) 必去景点：强制保留，作为骨架
-    must_include, unmatched = [], []
-    for raw in must_visit_raw:
-        raw = (raw or "").strip()
-        if not raw:
-            continue
-        p = match_place(raw)
-        if p is None:
-            unmatched.append(raw)
-            continue
-        if (not hiking_bool) and p["is_hiking"]:
-            warnings.append(f"必去景点「{p['name']}」为登山点位，与「不爬山」冲突，已忽略")
-            continue
-        if p["name"] not in [m["name"] for m in must_include]:
-            must_include.append(p)
-    for name in unmatched:
-        warnings.append(f"未能识别必去景点「{name}」，已忽略")
-
-    # 连通登山线路：登山模式下同时勾选老和山与北高峰时，合并为一条连续登山节点
-    if hiking_bool:
-        must_include = _merge_connected_hiking(must_include)
-
-    # 3) 骨架排序 + 最近邻贪心补充
-    route = _greedy_order(origin_geo, must_include)
-    included = {p["name"] for p in route}
-    # 连通登山线路的成员点位视为已纳入，避免贪心补充时重复加入
-    for p in route:
-        for member_name in p.get("members") or []:
-            included.add(member_name)
-    candidates = [p for p in pool if p["name"] not in included]
-    current = route[-1] if route else origin_geo
-
-    while len(route) < count and candidates:
-        # 爬山=是 且 尚未纳入登山点，则优先补充登山点，保证形成登山路线
-        if hiking_bool and not any(p["is_hiking"] for p in route):
-            hiking_pool = [p for p in candidates if p["is_hiking"]]
-            if hiking_pool:
-                nxt = _nearest(current, hiking_pool)
-                candidates.remove(nxt)
-                route.append(nxt)
-                current = nxt
-                continue
-        nxt = _nearest(current, candidates)
-        candidates.remove(nxt)
-        route.append(nxt)
-        current = nxt
-
-    if len(route) < count:
-        warnings.append(f"可安排景点数量不足：目标 {count} 个，实际安排 {len(route)} 个")
-
-    if not route:
-        raise PlanError("没有可安排的景点，请检查「是否爬山」选项与景点库是否冲突")
-
-    # 4) 交通段
-    legs, leg_warnings = build_legs(origin_geo, dest_geo, route, key)
-    warnings.extend(leg_warnings)
-
-    # 5) 时间轴
-    timeline, total_minutes, travel_total, visit_total = build_timeline(
-        origin_geo, dest_geo, route, legs
-    )
-
-    # 6) 风险校验
-    if total_minutes > MAX_TOTAL_MINUTES:
-        warnings.append(
-            f"总时长约 {total_minutes} 分钟（超过 {MAX_TOTAL_MINUTES} 分钟），超出一天合理范围"
-        )
-    if visit_total > 0 and travel_total > visit_total * TRAVEL_RATIO_WARN:
-        ratio = travel_total / visit_total
-        warnings.append(
-            f"路上耗时约 {travel_total} 分钟，占游玩时长 {visit_total} 分钟的 {ratio:.0%}，比例偏高"
-        )
-
-    # 7) 静态地图
-    static_map_url = build_static_map(origin_geo, dest_geo, route, legs, key)
-
-    # 8) 导出前端动态地图所需字段（仅组装已计算结果，不改变规划逻辑、不重复调接口）
-    legs_for_map = [
-        {
-            "mode": leg["mode"],
-            "from_name": leg["start_name"],
-            "to_name": leg["end_name"],
-            "polyline": [[float(x), float(y)] for x, y in (leg.get("polyline") or [])],
-        }
-        for leg in legs
-    ]
-    # 景点库暂无上下口坐标，暂用景点自身坐标作为登山点位标记；
-    # 连通登山线路展开为其成员点位，保留老和山、北高峰两个标记
-    hiking_markers = []
-    for p in route:
-        if not p.get("is_hiking"):
-            continue
-        members = p.get("members") or []
-        if members:
-            for member_name in members:
-                src = PLACE_BY_NAME.get(member_name)
-                if src:
-                    hiking_markers.append({
-                        "name": src["name"],
-                        "lng": src["lng"],
-                        "lat": src["lat"],
-                    })
+        # 1) 景点池：是否爬山决定是否过滤登山点位
+        if hiking_bool:
+            pool = list(PLACES)
         else:
-            hiking_markers.append({"name": p["name"], "lng": p["lng"], "lat": p["lat"]})
+            pool = [p for p in PLACES if not p["is_hiking"]]
 
-    return {
-        "origin": origin_geo["formatted"],
-        "destination": dest_geo["formatted"],
-        "hiking": "是" if hiking_bool else "否",
-        "count_requested": count,
-        "spots": route,
-        "timeline": timeline,
-        "total_minutes": total_minutes,
-        "travel_total": travel_total,
-        "visit_total": visit_total,
-        "warnings": warnings,
-        "static_map_url": static_map_url,
-        "origin_lng": origin_geo["lng"],
-        "origin_lat": origin_geo["lat"],
-        "destination_lng": dest_geo["lng"],
-        "destination_lat": dest_geo["lat"],
-        "legs": legs_for_map,
-        "hiking_markers": hiking_markers,
-    }
+        print("开始景点匹配")
+        # 2) 必去景点：强制保留，作为骨架
+        must_include, unmatched = [], []
+        for raw in must_visit_raw:
+            raw = (raw or "").strip()
+            if not raw:
+                continue
+            p = match_place(raw)
+            if p is None:
+                unmatched.append(raw)
+                continue
+            if (not hiking_bool) and p["is_hiking"]:
+                warnings.append(f"必去景点「{p['name']}」为登山点位，与「不爬山」冲突，已忽略")
+                continue
+            if p["name"] not in [m["name"] for m in must_include]:
+                must_include.append(p)
+        for name in unmatched:
+            warnings.append(f"未能识别必去景点「{name}」，已忽略")
+
+        # 连通登山线路：登山模式下同时勾选老和山与北高峰时，合并为一条连续登山节点
+        if hiking_bool:
+            must_include = _merge_connected_hiking(must_include)
+
+        # 3) 骨架排序 + 最近邻贪心补充
+        route = _greedy_order(origin_geo, must_include)
+        included = {p["name"] for p in route}
+        # 连通登山线路的成员点位视为已纳入，避免贪心补充时重复加入
+        for p in route:
+            for member_name in p.get("members") or []:
+                included.add(member_name)
+        candidates = [p for p in pool if p["name"] not in included]
+        current = route[-1] if route else origin_geo
+
+        while len(route) < count and candidates:
+            # 爬山=是 且 尚未纳入登山点，则优先补充登山点，保证形成登山路线
+            if hiking_bool and not any(p["is_hiking"] for p in route):
+                hiking_pool = [p for p in candidates if p["is_hiking"]]
+                if hiking_pool:
+                    nxt = _nearest(current, hiking_pool)
+                    candidates.remove(nxt)
+                    route.append(nxt)
+                    current = nxt
+                    continue
+            nxt = _nearest(current, candidates)
+            candidates.remove(nxt)
+            route.append(nxt)
+            current = nxt
+
+        print("景点匹配完成，最终景点列表：", [p["name"] for p in route])
+
+        if len(route) < count:
+            warnings.append(f"可安排景点数量不足：目标 {count} 个，实际安排 {len(route)} 个")
+
+        if not route:
+            raise PlanError("没有可安排的景点，请检查「是否爬山」选项与景点库是否冲突")
+
+        # 4) 交通段
+        legs, leg_warnings = build_legs(origin_geo, dest_geo, route, key)
+        warnings.extend(leg_warnings)
+
+        # 5) 时间轴
+        timeline, total_minutes, travel_total, visit_total = build_timeline(
+            origin_geo, dest_geo, route, legs
+        )
+
+        # 6) 风险校验
+        if total_minutes > MAX_TOTAL_MINUTES:
+            warnings.append(
+                f"总时长约 {total_minutes} 分钟（超过 {MAX_TOTAL_MINUTES} 分钟），超出一天合理范围"
+            )
+        if visit_total > 0 and travel_total > visit_total * TRAVEL_RATIO_WARN:
+            ratio = travel_total / visit_total
+            warnings.append(
+                f"路上耗时约 {travel_total} 分钟，占游玩时长 {visit_total} 分钟的 {ratio:.0%}，比例偏高"
+            )
+
+        # 7) 静态地图
+        static_map_url = build_static_map(origin_geo, dest_geo, route, legs, key)
+
+        # 8) 导出前端动态地图所需字段（仅组装已计算结果，不改变规划逻辑、不重复调接口）
+        legs_for_map = [
+            {
+                "mode": leg["mode"],
+                "from_name": leg["start_name"],
+                "to_name": leg["end_name"],
+                "polyline": [[float(x), float(y)] for x, y in (leg.get("polyline") or [])],
+            }
+            for leg in legs
+        ]
+        # 景点库暂无上下口坐标，暂用景点自身坐标作为登山点位标记；
+        # 连通登山线路展开为其成员点位，保留老和山、北高峰两个标记
+        hiking_markers = []
+        for p in route:
+            if not p.get("is_hiking"):
+                continue
+            members = p.get("members") or []
+            if members:
+                for member_name in members:
+                    src = PLACE_BY_NAME.get(member_name)
+                    if src:
+                        hiking_markers.append({
+                            "name": src["name"],
+                            "lng": src["lng"],
+                            "lat": src["lat"],
+                        })
+            else:
+                hiking_markers.append({"name": p["name"], "lng": p["lng"], "lat": p["lat"]})
+
+        print("行程组装完成，准备返回")
+        return {
+            "origin": origin_geo["formatted"],
+            "destination": dest_geo["formatted"],
+            "hiking": "是" if hiking_bool else "否",
+            "count_requested": count,
+            "spots": route,
+            "timeline": timeline,
+            "total_minutes": total_minutes,
+            "travel_total": travel_total,
+            "visit_total": visit_total,
+            "warnings": warnings,
+            "static_map_url": static_map_url,
+            "origin_lng": origin_geo["lng"],
+            "origin_lat": origin_geo["lat"],
+            "destination_lng": dest_geo["lng"],
+            "destination_lat": dest_geo["lat"],
+            "legs": legs_for_map,
+            "hiking_markers": hiking_markers,
+        }
+    except Exception as exc:
+        print("规划发生异常：", exc)
+        raise
