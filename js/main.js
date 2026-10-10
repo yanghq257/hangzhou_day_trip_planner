@@ -381,6 +381,8 @@
       window.addEventListener('error', function (e) {
         var msg = (e && e.message) ? e.message : '';
         var src = (e && e.filename) ? e.filename : '';
+        if (!src && e && e.target && e.target.src) src = e.target.src;
+        if (!src && e && e.target && e.target.href) src = e.target.href;
         if (msg || (src && src.indexOf('amap.com') !== -1)) {
           var line = msg || src;
           if (amapDiagMessages.length < 20) amapDiagMessages.push(line);
@@ -418,6 +420,14 @@
   function loadAMapSDK(key, securityCode) {
     // 官方推荐：先加载基础库，再用 AMap.plugin 显式加载插件，不混用 plugin URL 参数
     var NEEDED = ['AMap.Geocoder', 'AMap.Walking', 'AMap.Driving', 'AMap.Transfer', 'AMap.PlaceSearch'];
+
+    function maskSecret(v) {
+      if (!v) return '(空)';
+      if (v.length <= 6) return '***';
+      return v.slice(0, 3) + '***' + v.slice(-3);
+    }
+    console.log('[amap-sdk] 使用的 JS Key（脱敏）:', maskSecret(key), '长度:', (key || '').length);
+    console.log('[amap-sdk] 使用的安全密钥（脱敏）:', maskSecret(securityCode), '长度:', (securityCode || '').length);
 
     function ready() {
       if (!window.AMap) return false;
