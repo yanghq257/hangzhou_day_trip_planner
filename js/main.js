@@ -371,12 +371,13 @@
   // 高德 JS SDK 动态加载（含 Geocoder / Walking / Driving 插件）
   // -------------------------------------------------------------------------
   function loadAMapSDK(key, securityCode) {
-    var PLUGINS = ['AMap.Geocoder', 'AMap.Walking', 'AMap.Driving', 'AMap.Transfer', 'AMap.PlaceSearch'];
+    // 仅加载本规划实际用到的 3 个插件；保持与可用版本一致的 URL plugin 同步加载方式
+    var NEEDED = ['AMap.Geocoder', 'AMap.Walking', 'AMap.Driving'];
 
-    function pluginsReady() {
+    function ready() {
       if (!window.AMap) return false;
-      for (var i = 0; i < PLUGINS.length; i++) {
-        if (!window.AMap[PLUGINS[i]]) return false;
+      for (var i = 0; i < NEEDED.length; i++) {
+        if (!window.AMap[NEEDED[i]]) return false;
       }
       return true;
     }
@@ -393,13 +394,14 @@
         else resolve();
       }
 
-      if (pluginsReady()) { finish(); return; }
+      if (ready()) { finish(); return; }
 
       if (securityCode) {
         window._AMapSecurityConfig = { securityJsCode: securityCode };
       }
 
       var cbName = '_amapReady' + Date.now();
+      // 兜底：若回调一直不触发，避免按钮永久卡在「规划中」
       timer = setTimeout(function () {
         try { delete window[cbName]; } catch (e) {}
         finish(new Error('高德 JS API 加载超时，请检查 JS API Key、安全密钥与网络'));
@@ -409,25 +411,16 @@
         try {
           delete window[cbName];
         } catch (e) {}
-        if (pluginsReady()) { finish(); return; }
-        // 基础 SDK 已就绪但插件未挂载时，用 AMap.plugin 兜底加载
-        if (window.AMap && window.AMap.plugin) {
-          try {
-            window.AMap.plugin(PLUGINS, function () {
-              if (pluginsReady()) finish();
-              else finish(new Error('高德 JS API 插件加载失败'));
-            });
-          } catch (e) {
-            finish(new Error('高德 JS API 插件加载失败'));
-          }
+        if (ready()) {
+          finish();
         } else {
-          finish(new Error('高德 JS API 插件加载失败'));
+          finish(new Error('高德 JS API 插件加载失败，请确认Key为「Web端(JSAPI)」类型，已配置安全密钥，且域名白名单包含当前域名'));
         }
       };
 
       var s = document.createElement('script');
       s.src = 'https://webapi.amap.com/maps?v=2.0&key=' + encodeURIComponent(key) +
-        '&callback=' + cbName + '&plugin=' + PLUGINS.join(',');
+        '&callback=' + cbName + '&plugin=AMap.Geocoder,AMap.Walking,AMap.Driving';
       s.onerror = function () {
         try { delete window[cbName]; } catch (e) {}
         finish(new Error('高德 JS API 加载失败，请检查 JS API Key 与网络'));
