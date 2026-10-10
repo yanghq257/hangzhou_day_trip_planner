@@ -1,7 +1,11 @@
 package com.example.hangzhoutrip;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.os.Bundle;
+import android.webkit.JsResult;
+import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -26,6 +30,29 @@ public class MainActivity extends Activity {
         settings.setDomStorageEnabled(true);
 
         webView.setWebViewClient(new WebViewClient());
+        // 让页面里的 alert() 真正弹出，方便用户看到规划失败/超时等提示
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onJsAlert(WebView view, String url, String message, final JsResult result) {
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle(R.string.app_name)
+                        .setMessage(message)
+                        .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                result.confirm();
+                            }
+                        })
+                        .setOnCancelListener(new DialogInterface.OnCancelListener() {
+                            @Override
+                            public void onCancel(DialogInterface dialog) {
+                                result.cancel();
+                            }
+                        })
+                        .show();
+                return true;
+            }
+        });
         // 后端地址占位符：替换 strings.xml 中的 app_url 为 Render 公网域名
         webView.loadUrl(getString(R.string.app_url));
     }

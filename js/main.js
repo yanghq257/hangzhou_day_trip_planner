@@ -371,31 +371,66 @@
   // 高德 JS SDK 动态加载（含 Geocoder / Walking / Driving 插件）
   // -------------------------------------------------------------------------
   function loadAMapSDK(key, securityCode) {
-    return new Promise(function (resolve, reject) {
-      if (window.AMap && window.AMap.Geocoder && window.AMap.Walking && window.AMap.Driving) {
-        resolve();
-        return;
+    var PLUGINS = ['AMap.Geocoder', 'AMap.Walking', 'AMap.Driving', 'AMap.Transfer', 'AMap.PlaceSearch'];
+
+    function pluginsReady() {
+      if (!window.AMap) return false;
+      for (var i = 0; i < PLUGINS.length; i++) {
+        if (!window.AMap[PLUGINS[i]]) return false;
       }
+      return true;
+    }
+
+    return new Promise(function (resolve, reject) {
+      var settled = false;
+      var timer = null;
+
+      function finish(err) {
+        if (settled) return;
+        settled = true;
+        if (timer) clearTimeout(timer);
+        if (err) reject(err);
+        else resolve();
+      }
+
+      if (pluginsReady()) { finish(); return; }
+
       if (securityCode) {
         window._AMapSecurityConfig = { securityJsCode: securityCode };
       }
+
       var cbName = '_amapReady' + Date.now();
+      timer = setTimeout(function () {
+        try { delete window[cbName]; } catch (e) {}
+        finish(new Error('高德 JS API 加载超时，请检查 JS API Key、安全密钥与网络'));
+      }, 20000);
+
       window[cbName] = function () {
         try {
           delete window[cbName];
         } catch (e) {}
-        if (window.AMap && window.AMap.Geocoder && window.AMap.Walking && window.AMap.Driving) {
-          resolve();
+        if (pluginsReady()) { finish(); return; }
+        // 基础 SDK 已就绪但插件未挂载时，用 AMap.plugin 兜底加载
+        if (window.AMap && window.AMap.plugin) {
+          try {
+            window.AMap.plugin(PLUGINS, function () {
+              if (pluginsReady()) finish();
+              else finish(new Error('高德 JS API 插件加载失败'));
+            });
+          } catch (e) {
+            finish(new Error('高德 JS API 插件加载失败'));
+          }
         } else {
-          reject(new Error('高德 JS API 插件加载失败'));
+          finish(new Error('高德 JS API 插件加载失败'));
         }
       };
+
       var s = document.createElement('script');
       s.src = 'https://webapi.amap.com/maps?v=2.0&key=' + encodeURIComponent(key) +
-        '&callback=' + cbName + '&plugin=AMap.Geocoder,AMap.Walking,AMap.Driving,AMap.Transfer,AMap.PlaceSearch';
+        '&callback=' + cbName + '&plugin=' + PLUGINS.join(',');
       s.onerror = function () {
         try { delete window[cbName]; } catch (e) {}
-        reject(new Error('高德 JS API 加载失败，请检查 JS API Key 与网络'));
+        finish(new Error('高德 JS API 加载失败，请检查 JS API Key 与网络'));
       };
       document.head.appendChild(s);
     });
