@@ -391,6 +391,43 @@
       }, true);
     }
 
+    // 捕获高德 SDK 通过 console 输出的鉴权/白名单错误码（如 <AMap JSAPI> Error key! / INVALID_USER_SCODE）
+    try {
+      if (window.console) {
+        var origLog = window.console.log ? window.console.log.bind(window.console) : null;
+        var origWarn = window.console.warn ? window.console.warn.bind(window.console) : null;
+        var origError = window.console.error ? window.console.error.bind(window.console) : null;
+
+        function captureAmapConsole(args) {
+          var text = '';
+          try { text = Array.prototype.join.call(args, ' '); } catch (e2) {}
+          if (/^\[/.test(text)) return; // 跳过本应用自身日志
+          if (/<AMap|INVALID_USER|USERKEY|SCODE|PLAT_NOMATCH|Referer|Error key/i.test(text)) {
+            if (amapDiagMessages.length < 20) amapDiagMessages.push(text.slice(0, 200));
+          }
+        }
+
+        if (origLog) {
+          window.console.log = function () {
+            captureAmapConsole(arguments);
+            return origLog.apply(null, arguments);
+          };
+        }
+        if (origWarn) {
+          window.console.warn = function () {
+            captureAmapConsole(arguments);
+            return origWarn.apply(null, arguments);
+          };
+        }
+        if (origError) {
+          window.console.error = function () {
+            captureAmapConsole(arguments);
+            return origError.apply(null, arguments);
+          };
+        }
+      }
+    } catch (e) {}
+
     // 记录 webapi.amap.com / restapi.amap.com 等资源请求 URL（配合 F12 Network 看状态码）
     if (window.PerformanceObserver) {
       try {
