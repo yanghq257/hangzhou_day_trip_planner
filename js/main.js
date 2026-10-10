@@ -469,23 +469,19 @@
       return true;
     }
 
-    // 1.4.15 路线插件：通过 URL plugin 预加载，回调内直接实例化做可用性校验
+    // 1.4.15 路线插件：通过 URL plugin 预加载，仅校验类是否加载成功（不做空构造实例化）
     function instantiateRoutePlugins() {
-      var failed = [];
+      var missing = [];
       for (var i = 0; i < NEEDED.length; i++) {
         var name = NEEDED[i];
-        var Ctor = window.AMap && window.AMap[name];
-        if (!Ctor) {
-          failed.push(name);
-          continue;
-        }
-        try {
-          new Ctor({});
-        } catch (e) {
-          failed.push(name + '(' + (e && e.message ? e.message : e) + ')');
+        if (typeof (window.AMap && window.AMap[name]) !== 'function') {
+          missing.push(name);
         }
       }
-      return failed;
+      if (missing.length) {
+        throw new Error('路线插件类缺失: ' + missing.join(', '));
+      }
+      console.log('[amap-sdk] 路线插件类加载完成');
     }
 
     // 1.4.15 内置模块：直接实例化做可用性校验，不再等待插件加载它们
@@ -547,19 +543,13 @@
           return;
         }
         try {
-          var routeFail = instantiateRoutePlugins();
-          if (routeFail.length) {
-            var routeMsg = '高德路线插件实例化失败: ' + routeFail.join(', ');
-            console.error('[amap-sdk] ' + routeMsg);
-            finish(new Error(routeMsg));
-            return;
-          }
+          instantiateRoutePlugins();
           var builtinFail = instantiateBuiltins();
           if (builtinFail.length) {
             finish(new Error(pluginFailMessage('内置模块不可用: ' + builtinFail.join(', '))));
             return;
           }
-          console.log('[amap-sdk] 插件加载完成（Walking/Driving/Transfer 已实例化），内置 Geocoder/PlaceSearch 已实例化校验');
+          console.log('[amap-sdk] 插件加载完成（Walking/Driving/Transfer 类已加载），内置 Geocoder/PlaceSearch 已实例化校验');
           finish();
         } catch (e) {
           var instMsg = (e && e.message) ? e.message : String(e);
