@@ -368,6 +368,49 @@
   }
 
   // -------------------------------------------------------------------------
+  // 高德加载诊断：捕获脚本错误 + 记录 amap.com 资源请求
+  // -------------------------------------------------------------------------
+  var amapDiagMessages = [];
+
+  function installAMapDiagnostics() {
+    if (window.__amapDiagInstalled) return;
+    window.__amapDiagInstalled = true;
+
+    // 捕获高德插件脚本的运行时错误（如鉴权失败抛出的 INVALID_* 错误）
+    if (window.addEventListener) {
+      window.addEventListener('error', function (e) {
+        var msg = (e && e.message) ? e.message : '';
+        var src = (e && e.filename) ? e.filename : '';
+        if (msg || (src && src.indexOf('amap.com') !== -1)) {
+          var line = msg || src;
+          if (amapDiagMessages.length < 20) amapDiagMessages.push(line);
+          console.error('[amap-diag] 捕获脚本错误:', msg, '来源:', src);
+        }
+      }, true);
+    }
+
+    // 记录 webapi.amap.com / restapi.amap.com 等资源请求 URL（配合 F12 Network 看状态码）
+    if (window.PerformanceObserver) {
+      try {
+        var po = new PerformanceObserver(function (list) {
+          var entries = list.getEntries();
+          for (var i = 0; i < entries.length; i++) {
+            var name = entries[i].name || '';
+            if (name.indexOf('amap.com') !== -1) {
+              console.log('[amap-net] 资源请求:', entries[i].initiatorType, name);
+            }
+          }
+        });
+        try {
+          po.observe({ entryTypes: ['resource'], buffered: true });
+        } catch (e2) {
+          po.observe({ entryTypes: ['resource'] });
+        }
+      } catch (e) {}
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // 高德 JS SDK 动态加载（含 Geocoder / Walking / Driving 插件）
   // -------------------------------------------------------------------------
   function loadAMapSDK(key, securityCode) {
@@ -380,6 +423,24 @@
         if (!window.AMap[NEEDED[i]]) return false;
       }
       return true;
+    }
+
+    function missingPlugins() {
+      var missing = [];
+      for (var i = 0; i < NEEDED.length; i++) {
+        if (!window.AMap || !window.AMap[NEEDED[i]]) missing.push(NEEDED[i]);
+      }
+      return missing;
+    }
+
+    function pluginFailMessage(extra) {
+      var msg = '高德 JS API 插件加载失败';
+      if (extra) msg += '，' + extra;
+      if (amapDiagMessages.length) {
+        msg += '；诊断: ' + amapDiagMessages.slice(-3).join(' | ');
+      }
+      msg += '。请确认Key为「Web端(JSAPI)」类型、已配置安全密钥，且域名白名单包含当前域名（本地可用、公网不可用通常即域名白名单未配当前域名）';
+      return msg;
     }
 
     return new Promise(function (resolve, reject) {
@@ -396,8 +457,12 @@
 
       if (ready()) { finish(); return; }
 
+      // v2.0 要求：安全密钥必须在 SDK 脚本加载之前注入
       if (securityCode) {
         window._AMapSecurityConfig = { securityJsCode: securityCode };
+        console.log('[amap-sdk] 已注入 window._AMapSecurityConfig（在 SDK 加载前）');
+      } else {
+        console.warn('[amap-sdk] 未提供安全密钥，v2.0 可能鉴权失败');
       }
 
       var cbName = '_amapReady' + Date.now();
@@ -421,17 +486,20 @@
         }
         try {
           window.AMap.plugin(NEEDED, function () {
-            if (ready()) finish();
-            else finish(new Error('高德 JS API 插件加载失败，请确认Key为「Web端(JSAPI)」类型、已配置安全密钥，且域名白名单包含当前域名'));
+            var missing = missingPlugins();
+            if (!missing.length) { finish(); return; }
+            finish(new Error(pluginFailMessage('缺少插件: ' + missing.join(', '))));
           });
         } catch (e) {
-          finish(new Error('高德 JS API 插件加载失败，请确认Key为「Web端(JSAPI)」类型、已配置安全密钥，且域名白名单包含当前域名'));
+          finish(new Error(pluginFailMessage('AMap.plugin 调用异常: ' + (e && e.message ? e.message : e))));
         }
       };
 
-      var s = document.createElement('script');
-      s.src = 'https://webapi.amap.com/maps?v=2.0&key=' + encodeURIComponent(key) +
+      var sdkUrl = 'https://webapi.amap.com/maps?v=2.0&key=' + encodeURIComponent(key) +
         '&callback=' + cbName;
+      console.log('[amap-sdk] 开始加载基础库:', sdkUrl.replace(/key=[^&]+/, 'key=***'));
+      var s = document.createElement('script');
+      s.src = sdkUrl;
       s.onerror = function () {
         try { delete window[cbName]; } catch (e) {}
         finish(new Error('高德 JS API 加载失败，请检查 JS API Key 与网络'));
@@ -550,6 +618,7 @@
   // 启动
   // -------------------------------------------------------------------------
   function init() {
+    installAMapDiagnostics();
     initKeys();
     if (window.TripEngine) initAddressSelectors();
     initMustVisit();
