@@ -5,21 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>杭州主城区游玩锻炼路线规划</title>
   <link rel="stylesheet" href="static/style.css">
-  <script type="text/javascript">
-    (function () {
-      var code = '';
-      try { code = localStorage.getItem('amap_js_security_code') || ''; } catch (e) {}
-      if (code) {
-        window._AMapSecurityConfig = { securityJsCode: code };
-      }
-    })();
-  </script>
 </head>
 <body>
   <div class="container">
     <header>
       <h1>杭州主城区游玩锻炼路线规划</h1>
-      <p class="subtitle">登录 lbs.amap.com 注册配置高德 JS API Key 与安全密钥</p>
+      <p class="subtitle">登录 lbs.amap.com 注册配置高德 JS API Key</p>
     </header>
 
     <div class="alert alert-error" id="form-error" style="display:none;"></div>
@@ -31,10 +22,8 @@
           <div class="field">
             <span>高德 JS API Key</span>
             <input type="password" id="amap_js_api_key" placeholder="必填，用于地理编码与步行/驾车路径" autocomplete="off">
-            <span>高德安全密钥（securityJsCode）</span>
-            <input type="password" id="amap_js_security_code" placeholder="必填，高德 JS API 2.0 安全密钥" autocomplete="off">
             <div class="key-actions">
-              <label><input type="checkbox" id="save_keys"> 保存到本机（Key + 安全密钥）</label>
+              <label><input type="checkbox" id="save_keys"> 保存到本机（Key）</label>
               <button type="button" id="keys_clear" class="btn btn-ghost">清除</button>
             </div>
             <p class="hint" id="keys_hint" style="display:none;">已保存到本机（localStorage），下次打开自动填充</p>
@@ -127,6 +116,6 @@
   </div>
 
   <script src="js/trip-engine.js"></script>
-  <script src="js/main.js?v=20261010b"></script>
+  <script src="js/main.js?v=20261010c"></script>
 </body>
 </html>

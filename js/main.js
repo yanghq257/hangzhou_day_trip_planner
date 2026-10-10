@@ -3,8 +3,8 @@
  *
  * 职责：
  *   1. 用内嵌的 DISTRICT_STREET_COMMUNITY 填充三级联动地址选择器；
- *   2. 管理 amap_js_api_key（JS API Key）与 amap_js_security_code（安全密钥）的 localStorage/sessionStorage 回填；
- *   3. 动态加载高德 JS API 2.0（含 Geocoder / Walking / Driving / Transfer / PlaceSearch 插件）；
+ *   2. 管理 amap_js_api_key（JS API Key）的 localStorage/sessionStorage 回填；
+ *   3. 动态加载高德 JS API 1.4.15（含 Geocoder / Walking / Driving / Transfer / PlaceSearch 插件）；
  *   4. 维护「必去景点」chips 与「游玩景点数量」1-6 校验；
  *   5. 拦截表单提交，浏览器本地执行 TripEngine.planTrip()，结果写入 sessionStorage 后跳转 result.html；
  *   6. 提交前把表单状态写入 sessionStorage，供 result.html「重新规划」回传还原。
@@ -25,7 +25,7 @@
   }
 
   // -------------------------------------------------------------------------
-  // 高德密钥：amap_js_api_key（JS API Key）+ amap_js_security_code（安全密钥）
+  // 高德密钥：amap_js_api_key（JS API Key）
   // 保留跨页同步回填逻辑：localStorage 优先，sessionStorage 兜底
   // -------------------------------------------------------------------------
   function storageGet(key) {
@@ -49,11 +49,10 @@
 
   function initKeys() {
     var jsInput = $('amap_js_api_key');
-    var secInput = $('amap_js_security_code');
     var saveBox = $('save_keys');
 
     function renderHint() {
-      var saved = !!(storageGet('amap_js_api_key') || storageGet('amap_js_security_code'));
+      var saved = !!storageGet('amap_js_api_key');
       var hint = $('keys_hint');
       if (hint) hint.style.display = saved ? 'block' : 'none';
       if (saveBox) saveBox.checked = saved;
@@ -64,20 +63,13 @@
     var jsSession = sessionGet('amap_js_api_key');
     if (jsInput) jsInput.value = jsLocal || jsSession || '';
 
-    var secLocal = storageGet('amap_js_security_code');
-    var secSession = sessionGet('amap_js_security_code');
-    if (secInput) secInput.value = secLocal || secSession || '';
-
     renderHint();
 
     if ($('keys_clear')) {
       $('keys_clear').addEventListener('click', function () {
         storageRemove('amap_js_api_key');
         sessionRemove('amap_js_api_key');
-        storageRemove('amap_js_security_code');
-        sessionRemove('amap_js_security_code');
         if (jsInput) jsInput.value = '';
-        if (secInput) secInput.value = '';
         renderHint();
       });
     }
@@ -86,7 +78,6 @@
       saveBox.addEventListener('change', function () {
         if (!saveBox.checked) {
           storageRemove('amap_js_api_key');
-          storageRemove('amap_js_security_code');
           renderHint();
         }
       });
@@ -456,7 +447,7 @@
   // -------------------------------------------------------------------------
   // 高德 JS SDK 动态加载（含 Geocoder / Walking / Driving / Transfer / PlaceSearch 插件）
   // -------------------------------------------------------------------------
-  function loadAMapSDK(key, securityCode) {
+  function loadAMapSDK(key) {
     // 官方推荐：先加载基础库，再用 AMap.plugin 显式加载插件，不混用 plugin URL 参数
     var NEEDED = ['AMap.Geocoder', 'AMap.Walking', 'AMap.Driving', 'AMap.Transfer', 'AMap.PlaceSearch'];
 
@@ -466,7 +457,6 @@
       return v.slice(0, 3) + '***' + v.slice(-3);
     }
     console.log('[amap-sdk] 使用的 JS Key（脱敏）:', maskSecret(key), '长度:', (key || '').length);
-    console.log('[amap-sdk] 使用的安全密钥（脱敏）:', maskSecret(securityCode), '长度:', (securityCode || '').length);
 
     function ready() {
       if (!window.AMap) return false;
@@ -490,7 +480,7 @@
       if (amapDiagMessages.length) {
         msg += '；诊断: ' + amapDiagMessages.slice(-3).join(' | ');
       }
-      msg += '。请确认Key为「Web端(JSAPI)」类型、已配置安全密钥，且域名白名单包含当前域名（本地可用、公网不可用通常即域名白名单未配当前域名）';
+      msg += '。请确认Key为「Web端(JSAPI)」类型，且域名白名单包含当前域名（本地可用、公网不可用通常即域名白名单未配当前域名）';
       return msg;
     }
 
@@ -508,18 +498,10 @@
 
       if (ready()) { finish(); return; }
 
-      // v2.0 要求：安全密钥必须在 SDK 脚本加载之前注入
-      if (securityCode) {
-        window._AMapSecurityConfig = { securityJsCode: securityCode };
-        console.log('[amap-sdk] 已注入 window._AMapSecurityConfig（在 SDK 加载前）');
-      } else {
-        console.warn('[amap-sdk] 未提供安全密钥，v2.0 可能鉴权失败');
-      }
-
       var cbName = '_amapReady' + Date.now();
       timer = setTimeout(function () {
         try { delete window[cbName]; } catch (e) {}
-        finish(new Error('高德 JS API 加载超时，请检查 JS API Key、安全密钥与网络'));
+        finish(new Error('高德 JS API 加载超时，请检查 JS API Key 与网络'));
       }, 20000);
 
       window[cbName] = function () {
@@ -551,7 +533,7 @@
                 break;
               }
             }
-            var safeUrl = probeUrl ? probeUrl.replace(/key=[^&]+/i, 'key=***').replace(/securityJsCode=[^&]+/i, 'securityJsCode=***') : '';
+            var safeUrl = probeUrl ? probeUrl.replace(/key=[^&]+/i, 'key=***') : '';
 
             function failWith(extra) {
               finish(new Error(pluginFailMessage('缺少插件: ' + missing.join(', ') + (extra ? '；' + extra : ''))));
@@ -579,7 +561,7 @@
         }
       };
 
-      var sdkUrl = 'https://webapi.amap.com/maps?v=2.0&key=' + encodeURIComponent(key) +
+      var sdkUrl = 'https://webapi.amap.com/maps?v=1.4.15&key=' + encodeURIComponent(key) +
         '&callback=' + cbName;
       console.log('[amap-sdk] 开始加载基础库:', sdkUrl.replace(/key=[^&]+/, 'key=***'));
       var s = document.createElement('script');
@@ -613,10 +595,9 @@
       showError('');
 
       var jsKey = ($('amap_js_api_key').value || '').trim();
-      var securityCode = ($('amap_js_security_code').value || '').trim();
       var saveBox = $('save_keys');
 
-      // 记忆 Key 与安全密钥：会话始终记住；勾选「保存到本机」时写入 localStorage
+      // 记忆 Key：会话始终记住；勾选「保存到本机」时写入 localStorage
       if (jsKey) {
         sessionSet('amap_js_api_key', jsKey);
         if (saveBox && saveBox.checked) storageSet('amap_js_api_key', jsKey);
@@ -624,14 +605,6 @@
       } else {
         sessionRemove('amap_js_api_key');
         storageRemove('amap_js_api_key');
-      }
-      if (securityCode) {
-        sessionSet('amap_js_security_code', securityCode);
-        if (saveBox && saveBox.checked) storageSet('amap_js_security_code', securityCode);
-        else storageRemove('amap_js_security_code');
-      } else {
-        sessionRemove('amap_js_security_code');
-        storageRemove('amap_js_security_code');
       }
 
       // 地址：下拉选中则拼接「区+街道+社区」完整地址；未选中才读手动输入
@@ -660,10 +633,10 @@
       var count = parseInt(($('count').value || '').trim(), 10);
       var mustVisit = mustVisitItems.slice();
 
-      // SDK 需要 JS API Key + 安全密钥
+      // SDK 需要 JS API Key
       var sdkKey = jsKey;
-      if (!sdkKey || !securityCode) {
-        showError('请填写高德JS API Key 和安全密钥');
+      if (!sdkKey) {
+        showError('请填写高德 JS API Key');
         return;
       }
 
@@ -676,7 +649,7 @@
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '规划中…'; }
       console.log('[main] 开始加载高德 SDK 并规划');
 
-      loadAMapSDK(sdkKey, securityCode).then(function () {
+      loadAMapSDK(sdkKey).then(function () {
         console.log('[main] 高德 SDK 加载完成，开始 TripEngine.planTrip');
         return window.TripEngine.planTrip(origin, destination, hiking, mustVisit, count, sdkKey);
       }).then(function (plan) {
