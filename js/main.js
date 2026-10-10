@@ -4,7 +4,7 @@
  * 职责：
  *   1. 用内嵌的 DISTRICT_STREET_COMMUNITY 填充三级联动地址选择器；
  *   2. 管理 amap_js_api_key（JS API Key）与 amap_js_security_code（安全密钥）的 localStorage/sessionStorage 回填；
- *   3. 动态加载高德 JS API 2.0（含 Geocoder / Walking / Driving 插件）；
+ *   3. 动态加载高德 JS API 2.0（含 Geocoder / Walking / Driving / Transfer / PlaceSearch 插件）；
  *   4. 维护「必去景点」chips 与「游玩景点数量」1-6 校验；
  *   5. 拦截表单提交，浏览器本地执行 TripEngine.planTrip()，结果写入 sessionStorage 后跳转 result.html；
  *   6. 提交前把表单状态写入 sessionStorage，供 result.html「重新规划」回传还原。
@@ -402,20 +402,22 @@
           }
         });
         try {
-          po.observe({ entryTypes: ['resource'], buffered: true });
+          po.observe({ type: 'resource', buffered: true });
         } catch (e2) {
-          po.observe({ entryTypes: ['resource'] });
+          try {
+            po.observe({ entryTypes: ['resource'] });
+          } catch (e3) {}
         }
       } catch (e) {}
     }
   }
 
   // -------------------------------------------------------------------------
-  // 高德 JS SDK 动态加载（含 Geocoder / Walking / Driving 插件）
+  // 高德 JS SDK 动态加载（含 Geocoder / Walking / Driving / Transfer / PlaceSearch 插件）
   // -------------------------------------------------------------------------
   function loadAMapSDK(key, securityCode) {
     // 官方推荐：先加载基础库，再用 AMap.plugin 显式加载插件，不混用 plugin URL 参数
-    var NEEDED = ['AMap.Geocoder', 'AMap.Walking', 'AMap.Driving'];
+    var NEEDED = ['AMap.Geocoder', 'AMap.Walking', 'AMap.Driving', 'AMap.Transfer', 'AMap.PlaceSearch'];
 
     function ready() {
       if (!window.AMap) return false;
