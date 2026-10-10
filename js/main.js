@@ -59,14 +59,16 @@
       if (saveBox) saveBox.checked = saved;
     }
 
-    // 回填：localStorage 优先，sessionStorage 兜底
+    // 回填：localStorage 优先，sessionStorage 兜底，最后回退到内置默认密钥
+    var defaults = window.__APP_AMAP_DEFAULTS__ || {};
+
     var jsLocal = storageGet('amap_js_api_key');
     var jsSession = sessionGet('amap_js_api_key');
-    if (jsInput) jsInput.value = jsLocal || jsSession || '';
+    if (jsInput) jsInput.value = jsLocal || jsSession || defaults.amap_js_api_key || '';
 
     var secLocal = storageGet('amap_js_security_code');
     var secSession = sessionGet('amap_js_security_code');
-    if (secInput) secInput.value = secLocal || secSession || '';
+    if (secInput) secInput.value = secLocal || secSession || defaults.amap_js_security_code || '';
 
     renderHint();
 
