@@ -7,16 +7,8 @@
   <link rel="stylesheet" href="static/style.css">
   <script type="text/javascript">
     (function () {
-      // 内置默认高德密钥（Web端 JS API），免去每次手动填写；域名白名单需包含当前站点
-      var DEFAULTS = {
-        amap_js_api_key: 'a7d6db399c46772efcaadf6cd32f35fb',
-        amap_js_security_code: 'a5b6cafbfa162f15870afa980f2ed59e'
-      };
-      window.__APP_AMAP_DEFAULTS__ = DEFAULTS;
-
       var code = '';
       try { code = localStorage.getItem('amap_js_security_code') || ''; } catch (e) {}
-      if (!code) { code = DEFAULTS.amap_js_security_code; }
       if (code) {
         window._AMapSecurityConfig = { securityJsCode: code };
       }
