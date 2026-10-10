@@ -371,6 +371,7 @@
   // 高德加载诊断：捕获脚本错误 + 记录 amap.com 资源请求
   // -------------------------------------------------------------------------
   var amapDiagMessages = [];
+  var amapResUrls = [];
 
   function installAMapDiagnostics() {
     if (window.__amapDiagInstalled) return;
@@ -437,6 +438,7 @@
             var name = entries[i].name || '';
             if (name.indexOf('amap.com') !== -1) {
               console.log('[amap-net] 资源请求:', entries[i].initiatorType, name);
+              if (amapResUrls.length < 30) amapResUrls.push(name);
             }
           }
         });
@@ -537,7 +539,40 @@
           window.AMap.plugin(NEEDED, function () {
             var missing = missingPlugins();
             if (!missing.length) { finish(); return; }
-            finish(new Error(pluginFailMessage('缺少插件: ' + missing.join(', '))));
+
+            // 定位插件 CDN 请求，抓取其真实返回（状态码+内容）以区分鉴权/白名单错误
+            var probeUrl = null;
+            for (var i = amapResUrls.length - 1; i >= 0; i--) {
+              var u = amapResUrls[i] || '';
+              if (u.indexOf('mapsplusplugincdn') !== -1 ||
+                  u.indexOf('jsapi-service') !== -1 ||
+                  u.indexOf('plugin') !== -1) {
+                probeUrl = u;
+                break;
+              }
+            }
+            var safeUrl = probeUrl ? probeUrl.replace(/key=[^&]+/i, 'key=***').replace(/securityJsCode=[^&]+/i, 'securityJsCode=***') : '';
+
+            function failWith(extra) {
+              finish(new Error(pluginFailMessage('缺少插件: ' + missing.join(', ') + (extra ? '；' + extra : ''))));
+            }
+
+            if (probeUrl && window.fetch) {
+              try {
+                window.fetch(probeUrl, { cache: 'no-store' }).then(function (resp) {
+                  var status = resp.status;
+                  return resp.text().then(function (body) {
+                    failWith('插件CDN状态 ' + status + ': ' + String(body || '').slice(0, 300) + '；URL: ' + safeUrl);
+                  });
+                }).catch(function (e) {
+                  failWith('插件CDN抓取失败: ' + (e && e.message ? e.message : e) + '；URL: ' + safeUrl);
+                });
+              } catch (e) {
+                failWith('插件CDN URL: ' + safeUrl);
+              }
+            } else {
+              failWith(safeUrl ? '插件CDN URL: ' + safeUrl : '未捕获到插件CDN请求');
+            }
           });
         } catch (e) {
           finish(new Error(pluginFailMessage('AMap.plugin 调用异常: ' + (e && e.message ? e.message : e))));
