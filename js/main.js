@@ -4,7 +4,7 @@
  * 职责：
  *   1. 用内嵌的 DISTRICT_STREET_COMMUNITY 填充三级联动地址选择器；
  *   2. 管理 amap_js_api_key（JS API Key）的 localStorage/sessionStorage 回填；
- *   3. 动态加载高德 JS API 1.4.15（含 Geocoder / Walking / Driving / Transfer / PlaceSearch 插件）；
+ *   3. 动态加载高德 JS API 1.4.15（Walking / Driving / Transfer 插件；Geocoder / PlaceSearch 为内置）；
  *   4. 维护「必去景点」chips 与「游玩景点数量」1-6 校验；
  *   5. 拦截表单提交，浏览器本地执行 TripEngine.planTrip()，结果写入 sessionStorage 后跳转 result.html；
  *   6. 提交前把表单状态写入 sessionStorage，供 result.html「重新规划」回传还原。
@@ -445,11 +445,14 @@
   }
 
   // -------------------------------------------------------------------------
-  // 高德 JS SDK 动态加载（含 Geocoder / Walking / Driving / Transfer / PlaceSearch 插件）
+  // 高德 JS SDK 动态加载（插件：Walking / Driving / Transfer；Geocoder / PlaceSearch 为内置）
   // -------------------------------------------------------------------------
   function loadAMapSDK(key) {
     // 官方推荐：先加载基础库，再用 AMap.plugin 显式加载插件，不混用 plugin URL 参数
-    var NEEDED = ['AMap.Geocoder', 'AMap.Walking', 'AMap.Driving', 'AMap.Transfer', 'AMap.PlaceSearch'];
+    // 1.4.15：Geocoder / PlaceSearch 为内置模块，无需（也不应）通过 plugin 加载；
+    // 仅按需加载路线插件 Walking / Driving / Transfer
+    var NEEDED = ['AMap.Walking', 'AMap.Driving', 'AMap.Transfer'];
+    var BUILTIN = ['AMap.Geocoder', 'AMap.PlaceSearch'];
 
     function maskSecret(v) {
       if (!v) return '(空)';
@@ -460,8 +463,9 @@
 
     function ready() {
       if (!window.AMap) return false;
-      for (var i = 0; i < NEEDED.length; i++) {
-        if (!window.AMap[NEEDED[i]]) return false;
+      var all = NEEDED.concat(BUILTIN);
+      for (var i = 0; i < all.length; i++) {
+        if (!window.AMap[all[i]]) return false;
       }
       return true;
     }
@@ -472,6 +476,26 @@
         if (!window.AMap || !window.AMap[NEEDED[i]]) missing.push(NEEDED[i]);
       }
       return missing;
+    }
+
+    // 1.4.15 内置模块：直接实例化做可用性校验，不再等待插件加载它们
+    function instantiateBuiltins() {
+      var failed = [];
+      for (var i = 0; i < BUILTIN.length; i++) {
+        var name = BUILTIN[i];
+        var Ctor = window.AMap && window.AMap[name];
+        if (!Ctor) {
+          failed.push(name);
+          continue;
+        }
+        try {
+          if (name === 'AMap.Geocoder') new Ctor({ city: '杭州市' });
+          else new Ctor({});
+        } catch (e) {
+          failed.push(name + '(' + (e && e.message ? e.message : e) + ')');
+        }
+      }
+      return failed;
     }
 
     function pluginFailMessage(extra) {
@@ -520,7 +544,16 @@
         try {
           window.AMap.plugin(NEEDED, function () {
             var missing = missingPlugins();
-            if (!missing.length) { finish(); return; }
+            if (!missing.length) {
+              var builtinFail = instantiateBuiltins();
+              if (!builtinFail.length) {
+                console.log('[amap-sdk] 插件加载完成（Walking/Driving/Transfer），内置 Geocoder/PlaceSearch 已实例化校验');
+                finish();
+                return;
+              }
+              finish(new Error(pluginFailMessage('内置模块不可用: ' + builtinFail.join(', '))));
+              return;
+            }
 
             // 定位插件 CDN 请求，抓取其真实返回（状态码+内容）以区分鉴权/白名单错误
             var probeUrl = null;
@@ -555,6 +588,9 @@
             } else {
               failWith(safeUrl ? '插件CDN URL: ' + safeUrl : '未捕获到插件CDN请求');
             }
+          }, function (err) {
+            var msg = (err && err.message) ? err.message : (err ? String(err) : '未知错误');
+            finish(new Error(pluginFailMessage('插件加载失败: ' + msg)));
           });
         } catch (e) {
           finish(new Error(pluginFailMessage('AMap.plugin 调用异常: ' + (e && e.message ? e.message : e))));
