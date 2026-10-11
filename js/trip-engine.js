@@ -678,11 +678,12 @@
         reject(new PlanError('高德 JS API 尚未加载，请检查 JS API Key'));
         return;
       }
-      var geocoder = new global.AMap.Geocoder({ city: '杭州市' });
+      var geocoder = new global.AMap.Geocoder({ city: '0571' });
       console.log('[geocode] 即将调用 getLocation 解析完整地址:', addr);
       var timeoutTimer = setTimeout(function () {
-        reject(new PlanError('地址解析超时，请稍后重试'));
-      }, 10000);
+        console.error('[geocode] 超时:', addr);
+        reject(new PlanError('地址解析超时'));
+      }, 15000);
       try {
         geocoder.getLocation(addr, function (status, result) {
           clearTimeout(timeoutTimer);
@@ -737,6 +738,7 @@
           }
         });
       } catch (callErr) {
+        clearTimeout(timeoutTimer);
         console.error('[geocode] getLocation 调用异常:', callErr);
         reject(new PlanError('地址解析失败，请检查地址是否正确'));
       }
