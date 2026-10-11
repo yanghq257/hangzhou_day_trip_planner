@@ -447,9 +447,11 @@
   // -------------------------------------------------------------------------
   // 高德 JS SDK 动态加载
   // 说明（实测高德 1.4.x）：
-  //   1) 基础库 URL 的 callback 参数不一定会被作为函数回调，因此这里用「轮询 window.AMap + script.onload」双保险；
-  //   2) Walking / Driving / Transfer / Geocoder / PlaceSearch 都是插件，不在基础库中，
-  //      统一通过基础库 URL 的 plugin 参数在初始化时预加载，避免运行时 AMap.plugin 在动态 script 场景拉取失败。
+  //   1) 基础库 URL 的 callback 参数不一定会被作为函数回调，因此用「轮询 window.AMap + script.onload」双保险；
+  //   2) Walking / Driving / Transfer / Geocoder / PlaceSearch 都是插件，不在基础库中；
+  //   3) 实测基础库 URL 的 plugin 参数在该动态 script 场景下不会下载插件，
+  //      因此这里直接注入 webapi.amap.com/maps/modules 插件脚本（v=1.4.30 + vrs=window.AMap.version），
+  //      失败时再退回运行时 AMap.plugin 兜底。
   // -------------------------------------------------------------------------
   function loadAMapSDK(key) {
     var PLUGINS = ['AMap.Walking', 'AMap.Driving', 'AMap.Transfer', 'AMap.Geocoder', 'AMap.PlaceSearch'];
@@ -515,6 +517,8 @@
       var timer = null;
       var pollTimer = null;
       var cbName = '_amapReady' + Date.now();
+      var modulesInjected = false;
+      var pluginAttempted = false;
 
       function finish(err) {
         if (settled) return;
@@ -547,6 +551,57 @@
         }
       }
 
+      function tryAMapPlugin() {
+        if (settled || !window.AMap || pluginAttempted) return;
+        if (typeof window.AMap.plugin !== 'function') {
+          console.error('[amap-sdk] window.AMap.plugin 不存在，无法兜底');
+          return;
+        }
+        pluginAttempted = true;
+        console.log('[amap-sdk] 调用 AMap.plugin 兜底加载:', PLUGINS.join(','));
+        try {
+          window.AMap.plugin(PLUGINS, function () {
+            console.log('[amap-sdk] AMap.plugin success 回调触发');
+            check();
+          }, function (err) {
+            console.error('[amap-sdk] AMap.plugin error 回调触发:', err);
+          });
+        } catch (e) {
+          console.error('[amap-sdk] AMap.plugin 调用异常:', e);
+        }
+      }
+
+      // 直接注入 modules 插件脚本：这是当前最可靠的插件加载方式。
+      function injectModulesScript() {
+        if (settled || modulesInjected || !window.AMap) return;
+        modulesInjected = true;
+        var vrs = window.AMap.version || '';
+        var modulesUrl = 'https://webapi.amap.com/maps/modules?v=1.4.30&key=' + encodeURIComponent(key) +
+          '&vrs=' + encodeURIComponent(vrs) +
+          '&m=' + encodeURIComponent(PLUGINS.join(','));
+        console.log('[amap-sdk] 直接加载 modules 插件脚本:', modulesUrl.replace(/key=[^&]+/, 'key=***'));
+        var ms = document.createElement('script');
+        ms.async = true;
+        ms.src = modulesUrl;
+        ms.onload = function () {
+          console.log('[amap-sdk] modules 插件脚本 onload，window.AMap=', !!window.AMap);
+          check();
+        };
+        ms.onerror = function () {
+          console.error('[amap-sdk] modules 插件脚本加载失败，改用 AMap.plugin 兜底');
+          modulesInjected = false;
+          tryAMapPlugin();
+        };
+        document.head.appendChild(ms);
+      }
+
+      function ensurePlugins() {
+        if (settled || !window.AMap) return;
+        if (ready()) { check(); return; }
+        if (modulesInjected) return;
+        injectModulesScript();
+      }
+
       timer = setTimeout(function () {
         var missing = missingPlugins();
         var msg = '高德 JS API 插件加载超时';
@@ -558,20 +613,18 @@
       // 部分 1.4.x 构建会回调 callback；即便不回调，下面的轮询 + onload 也能兜底
       window[cbName] = function () {
         console.log('[amap-sdk] 基础库 callback 触发');
-        check();
+        ensurePlugins();
       };
-      pollTimer = setInterval(check, 100);
+      pollTimer = setInterval(ensurePlugins, 100);
 
-      var sdkUrl = 'https://webapi.amap.com/maps?v=1.4.15&key=' + encodeURIComponent(key) +
-        '&plugin=' + PLUGINS.join(',') +
-        '&callback=' + cbName;
-      console.log('[amap-sdk] 开始加载基础库（plugin 预加载）:', sdkUrl.replace(/key=[^&]+/, 'key=***'));
+      var sdkUrl = 'https://webapi.amap.com/maps?v=1.4.15&key=' + encodeURIComponent(key);
+      console.log('[amap-sdk] 开始加载基础库（不含 plugin 参数）:', sdkUrl.replace(/key=[^&]+/, 'key=***'));
       var s = document.createElement('script');
       s.async = true;
       s.src = sdkUrl;
       s.onload = function () {
         console.log('[amap-sdk] 基础库 script onload 触发，window.AMap=', !!window.AMap);
-        check();
+        ensurePlugins();
       };
       s.onerror = function () {
         finish(new Error('高德 JS API 加载失败，请检查 JS API Key 与网络'));
