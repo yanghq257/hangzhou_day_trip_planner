@@ -450,12 +450,33 @@
 
       function loadAMap(key, cb) {
         if (window.AMap) { cb(); return; }
+        var done = false;
+        var timer = null;
+        var pollTimer = null;
         var cbName = '_amapInit' + Date.now();
-        window[cbName] = function () {
-          try { cb(); } finally { try { delete window[cbName]; } catch (e) {} }
-        };
+
+        function finish() {
+          if (done) return;
+          done = true;
+          if (timer) clearTimeout(timer);
+          if (pollTimer) clearInterval(pollTimer);
+          try { delete window[cbName]; } catch (e) {}
+          cb();
+        }
+
+        window[cbName] = function () { finish(); };
+        timer = setTimeout(function () {
+          try { delete window[cbName]; } catch (e) {}
+          alert('高德 JS API 加载超时，请检查 JS API Key 与网络');
+        }, 20000);
+        pollTimer = setInterval(function () {
+          if (window.AMap) finish();
+        }, 100);
+
         var s = document.createElement('script');
+        s.async = true;
         s.src = 'https://webapi.amap.com/maps?v=1.4.15&key=' + encodeURIComponent(key) + '&callback=' + cbName;
+        s.onload = function () { if (window.AMap) finish(); };
         s.onerror = function () { alert('高德 JS API 加载失败，请检查 JS API Key 与网络'); };
         document.head.appendChild(s);
       }
