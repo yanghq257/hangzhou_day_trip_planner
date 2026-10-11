@@ -448,7 +448,7 @@
   // 高德 JS SDK 动态加载（插件：Walking / Driving / Transfer；Geocoder / PlaceSearch 为内置）
   // -------------------------------------------------------------------------
   function loadAMapSDK(key) {
-    // 1.4.15：通过 SDK URL 的 plugin 参数一次性预加载路线插件，避免动态 script 场景下 AMap.plugin 无法触发插件 CDN 请求
+    // 1.4.15：基础库加载完成后，使用 AMap.plugin 显式加载路线插件（Walking / Driving / Transfer）
     // Geocoder / PlaceSearch 为内置模块，直接实例化即可，无需（也不应）通过 plugin 加载
     var NEEDED = ['AMap.Walking', 'AMap.Driving', 'AMap.Transfer'];
     var BUILTIN = ['AMap.Geocoder', 'AMap.PlaceSearch'];
@@ -469,7 +469,7 @@
       return true;
     }
 
-    // 1.4.15 路线插件：通过 URL plugin 预加载，仅校验类是否加载成功（不做空构造实例化）
+    // 1.4.15 路线插件：AMap.plugin 加载后，仅校验类是否加载成功（不做空构造实例化）
     function instantiateRoutePlugins() {
       var missing = [];
       for (var i = 0; i < NEEDED.length; i++) {
@@ -542,24 +542,40 @@
           finish(new Error('高德 JS API 基础库加载失败，请检查 JS API Key 与网络'));
           return;
         }
+        if (ready()) { finish(); return; }
+        if (!window.AMap.plugin) {
+          finish(new Error('高德 JS API 插件接口不可用，请检查 JS API Key 与网络'));
+          return;
+        }
         try {
-          instantiateRoutePlugins();
-          var builtinFail = instantiateBuiltins();
-          if (builtinFail.length) {
-            finish(new Error(pluginFailMessage('内置模块不可用: ' + builtinFail.join(', '))));
-            return;
-          }
-          console.log('[amap-sdk] 插件加载完成（Walking/Driving/Transfer 类已加载），内置 Geocoder/PlaceSearch 已实例化校验');
-          finish();
+          window.AMap.plugin(NEEDED, function () {
+            try {
+              instantiateRoutePlugins();
+              var builtinFail = instantiateBuiltins();
+              if (builtinFail.length) {
+                finish(new Error(pluginFailMessage('内置模块不可用: ' + builtinFail.join(', '))));
+                return;
+              }
+              console.log('[amap-sdk] 插件加载完成（Walking/Driving/Transfer 类已加载），内置 Geocoder/PlaceSearch 已实例化校验');
+              finish();
+            } catch (e) {
+              var instMsg = (e && e.message) ? e.message : String(e);
+              console.error('[amap-sdk] 实例化异常:', instMsg);
+              finish(new Error(pluginFailMessage('实例化异常: ' + instMsg)));
+            }
+          }, function (err) {
+            var msg = (err && err.message) ? err.message : (err ? String(err) : '未知错误');
+            finish(new Error(pluginFailMessage('插件加载失败: ' + msg)));
+          });
         } catch (e) {
           var instMsg = (e && e.message) ? e.message : String(e);
-          console.error('[amap-sdk] 实例化异常:', instMsg);
-          finish(new Error(pluginFailMessage('实例化异常: ' + instMsg)));
+          console.error('[amap-sdk] AMap.plugin 调用异常:', instMsg);
+          finish(new Error(pluginFailMessage('AMap.plugin 调用异常: ' + instMsg)));
         }
       };
 
       var sdkUrl = 'https://webapi.amap.com/maps?v=1.4.15&key=' + encodeURIComponent(key) +
-        '&plugin=AMap.Walking,AMap.Driving,AMap.Transfer&callback=' + cbName;
+        '&callback=' + cbName;
       console.log('[amap-sdk] 开始加载基础库:', sdkUrl.replace(/key=[^&]+/, 'key=***'));
       var s = document.createElement('script');
       s.src = sdkUrl;
