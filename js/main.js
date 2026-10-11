@@ -3,8 +3,8 @@
  *
  * 职责：
  *   1. 用内嵌的 DISTRICT_STREET_COMMUNITY 填充三级联动地址选择器；
- *   2. 管理 amap_js_api_key（JS API Key）的 localStorage/sessionStorage 回填；
- *   3. 动态加载高德 JS API 1.4.15（Walking / Driving / Transfer / Geocoder / PlaceSearch 插件）；
+ *   2. 管理 amap_js_api_key（JS API Key）与 amap_js_security_code（安全密钥）的 localStorage/sessionStorage 回填；
+ *   3. 动态加载高德 JS API 2.0（含 Geocoder / Walking / Driving 插件）；
  *   4. 维护「必去景点」chips 与「游玩景点数量」1-6 校验；
  *   5. 拦截表单提交，浏览器本地执行 TripEngine.planTrip()，结果写入 sessionStorage 后跳转 result.html；
  *   6. 提交前把表单状态写入 sessionStorage，供 result.html「重新规划」回传还原。
@@ -25,7 +25,7 @@
   }
 
   // -------------------------------------------------------------------------
-  // 高德密钥：amap_js_api_key（JS API Key）
+  // 高德密钥：amap_js_api_key（JS API Key）+ amap_js_security_code（安全密钥）
   // 保留跨页同步回填逻辑：localStorage 优先，sessionStorage 兜底
   // -------------------------------------------------------------------------
   function storageGet(key) {
@@ -49,10 +49,11 @@
 
   function initKeys() {
     var jsInput = $('amap_js_api_key');
+    var secInput = $('amap_js_security_code');
     var saveBox = $('save_keys');
 
     function renderHint() {
-      var saved = !!storageGet('amap_js_api_key');
+      var saved = !!(storageGet('amap_js_api_key') || storageGet('amap_js_security_code'));
       var hint = $('keys_hint');
       if (hint) hint.style.display = saved ? 'block' : 'none';
       if (saveBox) saveBox.checked = saved;
@@ -63,13 +64,20 @@
     var jsSession = sessionGet('amap_js_api_key');
     if (jsInput) jsInput.value = jsLocal || jsSession || '';
 
+    var secLocal = storageGet('amap_js_security_code');
+    var secSession = sessionGet('amap_js_security_code');
+    if (secInput) secInput.value = secLocal || secSession || '';
+
     renderHint();
 
     if ($('keys_clear')) {
       $('keys_clear').addEventListener('click', function () {
         storageRemove('amap_js_api_key');
         sessionRemove('amap_js_api_key');
+        storageRemove('amap_js_security_code');
+        sessionRemove('amap_js_security_code');
         if (jsInput) jsInput.value = '';
+        if (secInput) secInput.value = '';
         renderHint();
       });
     }
@@ -78,6 +86,7 @@
       saveBox.addEventListener('change', function () {
         if (!saveBox.checked) {
           storageRemove('amap_js_api_key');
+          storageRemove('amap_js_security_code');
           renderHint();
         }
       });
@@ -359,275 +368,34 @@
   }
 
   // -------------------------------------------------------------------------
-  // 高德加载诊断：捕获脚本错误 + 记录 amap.com 资源请求
+  // 高德 JS SDK 动态加载（含 Geocoder / Walking / Driving 插件）
   // -------------------------------------------------------------------------
-  var amapDiagMessages = [];
-  var amapResUrls = [];
-
-  function installAMapDiagnostics() {
-    if (window.__amapDiagInstalled) return;
-    window.__amapDiagInstalled = true;
-
-    // 捕获高德插件脚本的运行时错误（如鉴权失败抛出的 INVALID_* 错误）
-    if (window.addEventListener) {
-      window.addEventListener('error', function (e) {
-        var msg = (e && e.message) ? e.message : '';
-        var src = (e && e.filename) ? e.filename : '';
-        if (!src && e && e.target && e.target.src) src = e.target.src;
-        if (!src && e && e.target && e.target.href) src = e.target.href;
-        if (msg || (src && src.indexOf('amap.com') !== -1)) {
-          var line = msg || src;
-          if (amapDiagMessages.length < 20) amapDiagMessages.push(line);
-          console.error('[amap-diag] 捕获脚本错误:', msg, '来源:', src);
-        }
-      }, true);
-    }
-
-    // 捕获高德 SDK 通过 console 输出的鉴权/白名单错误码（如 <AMap JSAPI> Error key! / INVALID_USER_SCODE）
-    try {
-      if (window.console) {
-        var origLog = window.console.log ? window.console.log.bind(window.console) : null;
-        var origWarn = window.console.warn ? window.console.warn.bind(window.console) : null;
-        var origError = window.console.error ? window.console.error.bind(window.console) : null;
-
-        function captureAmapConsole(args) {
-          var text = '';
-          try { text = Array.prototype.join.call(args, ' '); } catch (e2) {}
-          if (/^\[/.test(text)) return; // 跳过本应用自身日志
-          if (/<AMap|INVALID_USER|USERKEY|SCODE|PLAT_NOMATCH|Referer|Error key/i.test(text)) {
-            if (amapDiagMessages.length < 20) amapDiagMessages.push(text.slice(0, 200));
-          }
-        }
-
-        if (origLog) {
-          window.console.log = function () {
-            captureAmapConsole(arguments);
-            return origLog.apply(null, arguments);
-          };
-        }
-        if (origWarn) {
-          window.console.warn = function () {
-            captureAmapConsole(arguments);
-            return origWarn.apply(null, arguments);
-          };
-        }
-        if (origError) {
-          window.console.error = function () {
-            captureAmapConsole(arguments);
-            return origError.apply(null, arguments);
-          };
-        }
-      }
-    } catch (e) {}
-
-    // 记录 webapi.amap.com / restapi.amap.com 等资源请求 URL（配合 F12 Network 看状态码）
-    if (window.PerformanceObserver) {
-      try {
-        var po = new PerformanceObserver(function (list) {
-          var entries = list.getEntries();
-          for (var i = 0; i < entries.length; i++) {
-            var name = entries[i].name || '';
-            if (name.indexOf('amap.com') !== -1) {
-              console.log('[amap-net] 资源请求:', entries[i].initiatorType, name);
-              if (amapResUrls.length < 30) amapResUrls.push(name);
-            }
-          }
-        });
-        try {
-          po.observe({ type: 'resource', buffered: true });
-        } catch (e2) {
-          try {
-            po.observe({ entryTypes: ['resource'] });
-          } catch (e3) {}
-        }
-      } catch (e) {}
-    }
-  }
-
-  // -------------------------------------------------------------------------
-  // 高德 JS SDK 动态加载
-  // 说明（实测高德 1.4.x）：
-  //   1) 基础库 URL 的 callback 参数不一定会被作为函数回调，因此用「轮询 window.AMap + script.onload」双保险；
-  //   2) Walking / Driving / Transfer / Geocoder / PlaceSearch 都是插件，不在基础库中；
-  //   3) 实测基础库 URL 的 plugin 参数在该动态 script 场景下不会下载插件，
-  //      因此这里直接注入 webapi.amap.com/maps/modules 插件脚本（v=1.4.30 + vrs=window.AMap.version），
-  //      失败时再退回运行时 AMap.plugin 兜底。
-  // -------------------------------------------------------------------------
-  function loadAMapSDK(key) {
-    var PLUGINS = ['AMap.Walking', 'AMap.Driving', 'AMap.Transfer', 'AMap.Geocoder', 'AMap.PlaceSearch'];
-    var INSTANTIATE = ['AMap.Geocoder', 'AMap.PlaceSearch'];
-
-    function maskSecret(v) {
-      if (!v) return '(空)';
-      if (v.length <= 6) return '***';
-      return v.slice(0, 3) + '***' + v.slice(-3);
-    }
-    console.log('[amap-sdk] 使用的 JS Key（脱敏）:', maskSecret(key), '长度:', (key || '').length);
-
-    function ready() {
-      if (!window.AMap) return false;
-      for (var i = 0; i < PLUGINS.length; i++) {
-        if (typeof window.AMap[PLUGINS[i]] !== 'function') return false;
-      }
-      return true;
-    }
-
-    function missingPlugins() {
-      var missing = [];
-      for (var i = 0; i < PLUGINS.length; i++) {
-        if (typeof (window.AMap && window.AMap[PLUGINS[i]]) !== 'function') {
-          missing.push(PLUGINS[i]);
-        }
-      }
-      return missing;
-    }
-
-    // Geocoder / PlaceSearch 同为插件，加载完成后直接实例化做可用性校验（不做空构造的 Walking/Driving/Transfer 实例化）
-    function instantiateBuiltins() {
-      var failed = [];
-      for (var i = 0; i < INSTANTIATE.length; i++) {
-        var name = INSTANTIATE[i];
-        var Ctor = window.AMap && window.AMap[name];
-        if (!Ctor) {
-          failed.push(name);
-          continue;
-        }
-        try {
-          if (name === 'AMap.Geocoder') new Ctor({ city: '杭州市' });
-          else new Ctor({});
-        } catch (e) {
-          failed.push(name + '(' + (e && e.message ? e.message : e) + ')');
-        }
-      }
-      return failed;
-    }
-
-    function pluginFailMessage(extra) {
-      var msg = '高德 JS API 插件加载失败';
-      if (extra) msg += '，' + extra;
-      if (amapDiagMessages.length) {
-        msg += '；诊断: ' + amapDiagMessages.slice(-3).join(' | ');
-      }
-      msg += '。请确认Key为「Web端(JSAPI)」类型，且域名白名单包含当前域名（本地可用、公网不可用通常即域名白名单未配当前域名）';
-      return msg;
-    }
-
+  function loadAMapSDK(key, securityCode) {
     return new Promise(function (resolve, reject) {
-      var settled = false;
-      var timer = null;
-      var pollTimer = null;
+      if (window.AMap && window.AMap.Geocoder && window.AMap.Walking && window.AMap.Driving) {
+        resolve();
+        return;
+      }
+      if (securityCode) {
+        window._AMapSecurityConfig = { securityJsCode: securityCode };
+      }
       var cbName = '_amapReady' + Date.now();
-      var modulesInjected = false;
-      var pluginAttempted = false;
-
-      function finish(err) {
-        if (settled) return;
-        settled = true;
-        if (timer) clearTimeout(timer);
-        if (pollTimer) clearInterval(pollTimer);
-        try { delete window[cbName]; } catch (e) {}
-        if (err) reject(err);
-        else resolve();
-      }
-
-      if (ready()) { finish(); return; }
-
-      function check() {
-        if (settled) return;
-        if (!window.AMap) return;
-        if (!ready()) return;
-        try {
-          var builtinFail = instantiateBuiltins();
-          if (builtinFail.length) {
-            finish(new Error(pluginFailMessage('内置模块不可用: ' + builtinFail.join(', '))));
-            return;
-          }
-          console.log('[amap-sdk] 插件加载完成（Walking/Driving/Transfer/Geocoder/PlaceSearch 已加载）');
-          finish();
-        } catch (e) {
-          var instMsg = (e && e.message) ? e.message : String(e);
-          console.error('[amap-sdk] 实例化异常:', instMsg);
-          finish(new Error(pluginFailMessage('实例化异常: ' + instMsg)));
-        }
-      }
-
-      function tryAMapPlugin() {
-        if (settled || !window.AMap || pluginAttempted) return;
-        if (typeof window.AMap.plugin !== 'function') {
-          console.error('[amap-sdk] window.AMap.plugin 不存在，无法兜底');
-          return;
-        }
-        pluginAttempted = true;
-        console.log('[amap-sdk] 调用 AMap.plugin 兜底加载:', PLUGINS.join(','));
-        try {
-          window.AMap.plugin(PLUGINS, function () {
-            console.log('[amap-sdk] AMap.plugin success 回调触发');
-            check();
-          }, function (err) {
-            console.error('[amap-sdk] AMap.plugin error 回调触发:', err);
-          });
-        } catch (e) {
-          console.error('[amap-sdk] AMap.plugin 调用异常:', e);
-        }
-      }
-
-      // 直接注入 modules 插件脚本：这是当前最可靠的插件加载方式。
-      function injectModulesScript() {
-        if (settled || modulesInjected || !window.AMap) return;
-        modulesInjected = true;
-        var vrs = window.AMap.version || '';
-        var modulesUrl = 'https://webapi.amap.com/maps/modules?v=1.4.30&key=' + encodeURIComponent(key) +
-          '&vrs=' + encodeURIComponent(vrs) +
-          '&m=' + encodeURIComponent(PLUGINS.join(','));
-        console.log('[amap-sdk] 直接加载 modules 插件脚本:', modulesUrl.replace(/key=[^&]+/, 'key=***'));
-        var ms = document.createElement('script');
-        ms.async = true;
-        ms.src = modulesUrl;
-        ms.onload = function () {
-          console.log('[amap-sdk] modules 插件脚本 onload，window.AMap=', !!window.AMap);
-          check();
-        };
-        ms.onerror = function () {
-          console.error('[amap-sdk] modules 插件脚本加载失败，改用 AMap.plugin 兜底');
-          modulesInjected = false;
-          tryAMapPlugin();
-        };
-        document.head.appendChild(ms);
-      }
-
-      function ensurePlugins() {
-        if (settled || !window.AMap) return;
-        if (ready()) { check(); return; }
-        if (modulesInjected) return;
-        injectModulesScript();
-      }
-
-      timer = setTimeout(function () {
-        var missing = missingPlugins();
-        var msg = '高德 JS API 插件加载超时';
-        if (missing.length) msg += '，插件类缺失: ' + missing.join(', ');
-        if (amapDiagMessages.length) msg += '；诊断: ' + amapDiagMessages.slice(-3).join(' | ');
-        finish(new Error(msg + '。请确认Key为「Web端(JSAPI)」类型，且域名白名单包含当前域名'));
-      }, 25000);
-
-      // 部分 1.4.x 构建会回调 callback；即便不回调，下面的轮询 + onload 也能兜底
       window[cbName] = function () {
-        console.log('[amap-sdk] 基础库 callback 触发');
-        ensurePlugins();
+        try {
+          delete window[cbName];
+        } catch (e) {}
+        if (window.AMap && window.AMap.Geocoder && window.AMap.Walking && window.AMap.Driving) {
+          resolve();
+        } else {
+          reject(new Error('高德 JS API 插件加载失败'));
+        }
       };
-      pollTimer = setInterval(ensurePlugins, 100);
-
-      var sdkUrl = 'https://webapi.amap.com/maps?v=1.4.15&key=' + encodeURIComponent(key);
-      console.log('[amap-sdk] 开始加载基础库（不含 plugin 参数）:', sdkUrl.replace(/key=[^&]+/, 'key=***'));
       var s = document.createElement('script');
-      s.async = true;
-      s.src = sdkUrl;
-      s.onload = function () {
-        console.log('[amap-sdk] 基础库 script onload 触发，window.AMap=', !!window.AMap);
-        ensurePlugins();
-      };
+      s.src = 'https://webapi.amap.com/maps?v=2.0&key=' + encodeURIComponent(key) +
+        '&callback=' + cbName + '&plugin=AMap.Geocoder,AMap.Walking,AMap.Driving,AMap.Transfer,AMap.PlaceSearch';
       s.onerror = function () {
-        finish(new Error('高德 JS API 加载失败，请检查 JS API Key 与网络'));
+        try { delete window[cbName]; } catch (e) {}
+        reject(new Error('高德 JS API 加载失败，请检查 JS API Key 与网络'));
       };
       document.head.appendChild(s);
     });
@@ -654,9 +422,10 @@
       showError('');
 
       var jsKey = ($('amap_js_api_key').value || '').trim();
+      var securityCode = ($('amap_js_security_code').value || '').trim();
       var saveBox = $('save_keys');
 
-      // 记忆 Key：会话始终记住；勾选「保存到本机」时写入 localStorage
+      // 记忆 Key 与安全密钥：会话始终记住；勾选「保存到本机」时写入 localStorage
       if (jsKey) {
         sessionSet('amap_js_api_key', jsKey);
         if (saveBox && saveBox.checked) storageSet('amap_js_api_key', jsKey);
@@ -664,6 +433,14 @@
       } else {
         sessionRemove('amap_js_api_key');
         storageRemove('amap_js_api_key');
+      }
+      if (securityCode) {
+        sessionSet('amap_js_security_code', securityCode);
+        if (saveBox && saveBox.checked) storageSet('amap_js_security_code', securityCode);
+        else storageRemove('amap_js_security_code');
+      } else {
+        sessionRemove('amap_js_security_code');
+        storageRemove('amap_js_security_code');
       }
 
       // 地址：下拉选中则拼接「区+街道+社区」完整地址；未选中才读手动输入
@@ -692,10 +469,10 @@
       var count = parseInt(($('count').value || '').trim(), 10);
       var mustVisit = mustVisitItems.slice();
 
-      // SDK 需要 JS API Key
+      // SDK 需要 JS API Key + 安全密钥
       var sdkKey = jsKey;
-      if (!sdkKey) {
-        showError('请填写高德 JS API Key');
+      if (!sdkKey || !securityCode) {
+        showError('请填写高德JS API Key 和安全密钥');
         return;
       }
 
@@ -708,7 +485,7 @@
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '规划中…'; }
       console.log('[main] 开始加载高德 SDK 并规划');
 
-      loadAMapSDK(sdkKey).then(function () {
+      loadAMapSDK(sdkKey, securityCode).then(function () {
         console.log('[main] 高德 SDK 加载完成，开始 TripEngine.planTrip');
         return window.TripEngine.planTrip(origin, destination, hiking, mustVisit, count, sdkKey);
       }).then(function (plan) {
@@ -734,7 +511,6 @@
   // 启动
   // -------------------------------------------------------------------------
   function init() {
-    installAMapDiagnostics();
     initKeys();
     if (window.TripEngine) initAddressSelectors();
     initMustVisit();
