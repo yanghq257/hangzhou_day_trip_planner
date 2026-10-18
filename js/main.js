@@ -46,15 +46,150 @@
   // -------------------------------------------------------------------------
   function initAddressSelectors() {
     var tree = window.TripEngine.DISTRICT_STREET_COMMUNITY;
+    var transitKey = '公共交通/地标';
 
-    function resetSelect(sel, placeholder, disabled) {
-      sel.innerHTML = '';
-      var opt = document.createElement('option');
-      opt.value = '';
-      opt.textContent = placeholder;
-      sel.appendChild(opt);
-      sel.value = '';
-      sel.disabled = disabled;
+    function closeAllDropdowns() {
+      var opened = document.querySelectorAll('.custom-select.is-open');
+      for (var i = 0; i < opened.length; i++) {
+        opened[i].classList.remove('is-open');
+      }
+    }
+
+    function createCustomSelect(id) {
+      var el = $(id);
+      if (!el) return null;
+
+      var placeholder = el.getAttribute('data-placeholder') || '请选择';
+      var currentValue = '';
+      var currentDisabled = el.hasAttribute('disabled');
+      var options = [];
+
+      var trigger = document.createElement('button');
+      trigger.type = 'button';
+      trigger.className = 'custom-select-trigger';
+
+      var list = document.createElement('ul');
+      list.className = 'custom-select-list';
+
+      el.innerHTML = '';
+      el.appendChild(trigger);
+      el.appendChild(list);
+
+      function findSelected() {
+        for (var i = 0; i < options.length; i++) {
+          if (options[i].value === currentValue) return options[i];
+        }
+        return null;
+      }
+
+      function renderTrigger() {
+        var selected = findSelected();
+        trigger.textContent = selected ? selected.text : placeholder;
+        if (selected) trigger.classList.remove('is-placeholder');
+        else trigger.classList.add('is-placeholder');
+      }
+
+      function renderList() {
+        list.innerHTML = '';
+        if (!options.length) {
+          var empty = document.createElement('li');
+          empty.className = 'custom-select-empty';
+          empty.textContent = '暂无选项';
+          list.appendChild(empty);
+          return;
+        }
+        options.forEach(function (opt) {
+          var li = document.createElement('li');
+          li.className = 'custom-select-option';
+          if (opt.value === currentValue) li.className += ' selected';
+          li.textContent = opt.text;
+          li.setAttribute('data-value', opt.value);
+          list.appendChild(li);
+        });
+      }
+
+      function close() {
+        el.classList.remove('is-open');
+      }
+
+      function open() {
+        if (currentDisabled) return;
+        closeAllDropdowns();
+        el.classList.add('is-open');
+      }
+
+      function syncDisabled() {
+        trigger.disabled = currentDisabled;
+        if (currentDisabled) el.classList.add('is-disabled');
+        else el.classList.remove('is-disabled');
+        if (currentDisabled) close();
+      }
+
+      Object.defineProperty(el, 'value', {
+        get: function () { return currentValue; },
+        set: function (v) {
+          currentValue = v || '';
+          renderTrigger();
+          renderList();
+        },
+        configurable: true
+      });
+
+      Object.defineProperty(el, 'disabled', {
+        get: function () { return currentDisabled; },
+        set: function (v) {
+          currentDisabled = !!v;
+          syncDisabled();
+        },
+        configurable: true
+      });
+
+      el.setOptions = function (arr, ph) {
+        options = arr || [];
+        if (typeof ph === 'string') placeholder = ph;
+        currentValue = '';
+        renderTrigger();
+        renderList();
+      };
+
+      el.open = open;
+      el.close = close;
+
+      trigger.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (el.classList.contains('is-open')) close();
+        else open();
+      });
+
+      list.addEventListener('click', function (e) {
+        var node = e.target;
+        while (node && node !== list) {
+          if (node.nodeName === 'LI' && node.hasAttribute('data-value')) {
+            currentValue = node.getAttribute('data-value');
+            renderTrigger();
+            renderList();
+            close();
+            el.dispatchEvent(new Event('change'));
+            return;
+          }
+          node = node.parentNode;
+        }
+      });
+
+      el.addEventListener('change', function () {
+        if (typeof el._onchange === 'function') el._onchange();
+      });
+
+      document.addEventListener('click', function (e) {
+        if (!el.contains(e.target)) close();
+      });
+
+      renderTrigger();
+      renderList();
+      syncDisabled();
+
+      return el;
     }
 
     function getFullAddress(prefix) {
@@ -86,71 +221,71 @@
       var streetSel = $(prefix + '_street');
       var communitySel = $(prefix + '_community');
       districtSel.value = '';
-      resetSelect(streetSel, '请选择街道', true);
-      resetSelect(communitySel, '请选择小区', true);
+      streetSel.setOptions([], '请选择街道');
+      streetSel.disabled = true;
+      communitySel.setOptions([], '请选择小区');
+      communitySel.disabled = true;
       updateDisplay(prefix);
     }
 
     function initGroup(prefix) {
-      var districtSel = $(prefix + '_district');
-      var streetSel = $(prefix + '_street');
-      var communitySel = $(prefix + '_community');
+      var districtSel = createCustomSelect(prefix + '_district');
+      var streetSel = createCustomSelect(prefix + '_street');
+      var communitySel = createCustomSelect(prefix + '_community');
       var manualInput = $(prefix + '_manual');
 
-      Object.keys(tree).forEach(function (district) {
-        var opt = document.createElement('option');
-        opt.value = district;
-        opt.textContent = district;
-        districtSel.appendChild(opt);
-      });
+      districtSel.setOptions(Object.keys(tree), '请选择主城区');
+      streetSel.setOptions([], '请选择街道');
+      communitySel.setOptions([], '请选择小区');
+      streetSel.disabled = true;
+      communitySel.disabled = true;
 
-      districtSel.addEventListener('change', function () {
+      districtSel._onchange = function () {
         var district = districtSel.value;
-        resetSelect(streetSel, '请选择街道', true);
-        resetSelect(communitySel, '请选择小区', true);
+        streetSel.setOptions([], '请选择街道');
+        streetSel.disabled = true;
+        communitySel.setOptions([], '请选择小区');
+        communitySel.disabled = true;
         manualInput.value = '';
         if (!district) { updateDisplay(prefix); return; }
+
         var streets = tree[district] || {};
         var streetKeys = Object.keys(streets);
-        var transitKey = '公共交通/地标';
+        var streetOptions = [];
         if (streetKeys.indexOf(transitKey) !== -1) {
-          var transitOpt = document.createElement('option');
-          transitOpt.value = transitKey;
-          transitOpt.textContent = '公共地标';
-          streetSel.insertBefore(transitOpt, streetSel.firstChild);
+          streetOptions.push({ value: transitKey, text: '公共地标' });
         }
         streetKeys.forEach(function (street) {
           if (street === transitKey) return;
-          var opt = document.createElement('option');
-          opt.value = street;
-          opt.textContent = street;
-          streetSel.appendChild(opt);
+          streetOptions.push({ value: street, text: street });
         });
+        streetSel.setOptions(streetOptions, '请选择街道');
         streetSel.disabled = false;
         updateDisplay(prefix);
-      });
+      };
 
-      streetSel.addEventListener('change', function () {
+      streetSel._onchange = function () {
         var district = districtSel.value;
         var street = streetSel.value;
-        resetSelect(communitySel, '请选择小区', true);
+        communitySel.setOptions([], '请选择小区');
+        communitySel.disabled = true;
         manualInput.value = '';
         if (!district || !street) { updateDisplay(prefix); return; }
+
         var communities = tree[district][street] || [];
+        var communityOptions = [];
         communities.forEach(function (c) {
-          var opt = document.createElement('option');
-          opt.value = c;
-          opt.textContent = c;
-          communitySel.appendChild(opt);
+          communityOptions.push({ value: c, text: c });
         });
+        communitySel.setOptions(communityOptions, '请选择小区');
         communitySel.disabled = false;
         updateDisplay(prefix);
-      });
+      };
 
-      communitySel.addEventListener('change', function () {
+      communitySel._onchange = function () {
         manualInput.value = '';
         updateDisplay(prefix);
-      });
+      };
 
       manualInput.addEventListener('input', function () {
         if (manualInput.value.trim()) clearDropdown(prefix);

@@ -46,15 +46,9 @@
         <div class="cascade-box">
           <div class="selected-address empty" id="origin_display">未选择（请通过下方下拉选择小区）</div>
           <div class="cascade-row">
-            <select id="origin_district" class="cascade">
-              <option value="">请选择主城区</option>
-            </select>
-            <select id="origin_street" class="cascade" disabled>
-              <option value="">请选择街道</option>
-            </select>
-            <select id="origin_community" class="cascade" disabled>
-              <option value="">请选择小区</option>
-            </select>
+            <div id="origin_district" class="custom-select" data-placeholder="请选择主城区"></div>
+            <div id="origin_street" class="custom-select" data-placeholder="请选择街道" disabled></div>
+            <div id="origin_community" class="custom-select" data-placeholder="请选择小区" disabled></div>
           </div>
         </div>
         <div class="manual-address">
@@ -68,15 +62,9 @@
         <div class="cascade-box">
           <div class="selected-address empty" id="destination_display">未选择（请通过下方下拉选择小区）</div>
           <div class="cascade-row">
-            <select id="destination_district" class="cascade">
-              <option value="">请选择主城区</option>
-            </select>
-            <select id="destination_street" class="cascade" disabled>
-              <option value="">请选择街道</option>
-            </select>
-            <select id="destination_community" class="cascade" disabled>
-              <option value="">请选择小区</option>
-            </select>
+            <div id="destination_district" class="custom-select" data-placeholder="请选择主城区"></div>
+            <div id="destination_street" class="custom-select" data-placeholder="请选择街道" disabled></div>
+            <div id="destination_community" class="custom-select" data-placeholder="请选择小区" disabled></div>
           </div>
         </div>
         <div class="manual-address">
@@ -126,6 +114,6 @@
   </div>
 
   <script src="js/trip-engine.js?v=6"></script>
-  <script src="js/main.js?v=4"></script>
+  <script src="js/main.js?v=5"></script>
 </body>
 </html>

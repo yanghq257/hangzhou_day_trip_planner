@@ -201,15 +201,94 @@ details.advanced[open] summary::before {
   gap: 8px;
 }
 
-.cascade-row select.cascade {
+.cascade-row .custom-select {
   flex: 1 1 150px;
-  margin-bottom: 0;
+  position: relative;
 }
 
-/* 街道单选列表首项「公共地标」需完整可见，增加顶部内边距避免首行被截断 */
-#origin_street.cascade,
-#destination_street.cascade {
-  padding-top: 14px;
+/* 自定义下拉：替代原生 select，保证首项「公共地标」完整可见 */
+.custom-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 11px 12px;
+  font-size: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #16202B;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  -webkit-appearance: none;
+}
+
+.custom-select-trigger::after {
+  content: "";
+  flex-shrink: 0;
+  width: 0;
+  height: 0;
+  margin-left: 8px;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--muted);
+}
+
+.custom-select-trigger.is-placeholder {
+  color: var(--muted);
+}
+
+.custom-select-trigger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.custom-select.is-open .custom-select-trigger {
+  border-color: var(--primary);
+}
+
+.custom-select-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 14px 0 8px;
+  list-style: none;
+  background: #1E2732;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+  z-index: 30;
+  display: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.custom-select.is-open .custom-select-list {
+  display: block;
+}
+
+.custom-select-option {
+  padding: 9px 14px;
+  font-size: 15px;
+  color: var(--text);
+  cursor: pointer;
+  word-break: break-all;
+}
+
+.custom-select-option:hover {
+  background: #16202B;
+}
+
+.custom-select-option.selected {
+  color: var(--primary);
+}
+
+.custom-select-empty {
+  padding: 9px 14px;
+  font-size: 14px;
+  color: var(--muted);
 }
 
 .selected-address {
