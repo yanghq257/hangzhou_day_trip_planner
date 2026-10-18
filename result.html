@@ -33,7 +33,6 @@
       <h2>⚠️ 风险提示</h2>
       <ul class="warnings" id="warnings-list"></ul>
     </div>
-    <div class="alert alert-success" id="success-alert" style="display:none;">各项校验通过，未发现明显风险。</div>
 
     <div class="card">
       <h2>🗺️ 路线地图</h2>
@@ -57,11 +56,6 @@
     <div class="card">
       <h2>🕒 行程时间轴</h2>
       <div class="timeline-list" id="timeline-list"></div>
-    </div>
-
-    <div class="card">
-      <h2>📋 温馨提示</h2>
-      <ul class="notes" id="notes-list"></ul>
     </div>
 
     <div class="card">
@@ -158,8 +152,6 @@
           li.textContent = w;
           wl.appendChild(li);
         });
-      } else {
-        $('success-alert').style.display = 'block';
       }
 
       // ---------- 渲染景点 ----------
@@ -250,24 +242,6 @@
         });
       }
       renderTimeline();
-
-      // ---------- 渲染温馨提示 ----------
-      var hasConnectedHike = (plan.spots || []).some(function (p) { return p.connected_hiking; });
-      var notes = [];
-      notes.push('路线与耗时由高德地图实时估算，实际以现场交通为准。');
-      if (plan.hiking === '是') {
-        notes.push('行程包含登山路段，请穿防滑运动鞋，量力而行并及时补水。');
-      }
-      if (hasConnectedHike) {
-        notes.push('部分登山路段为连通步道，沿山脊线串联，请留意路标与岔口。');
-      }
-      notes.push('本行程由本地规则引擎生成，不调用任何大模型。');
-      var notesList = $('notes-list');
-      notes.forEach(function (n) {
-        var li = document.createElement('li');
-        li.textContent = n;
-        notesList.appendChild(li);
-      });
 
       // ---------- 复制行程文本 ----------
       function buildCopyText() {
