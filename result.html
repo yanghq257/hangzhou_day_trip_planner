@@ -411,10 +411,20 @@
         var minLat = Math.min.apply(null, lats);
         var maxLat = Math.max.apply(null, lats);
         map.setBounds(new AMap.Bounds([minLng, minLat], [maxLng, maxLat]), false, [60, 60, 60, 60]);
+        map.setPitch(45);
       }
 
       function initMap() {
-        map = new AMap.Map('map', { zoom: 12 });
+        map = new AMap.Map('map', {
+          zoom: 12,
+          viewMode: '3D',
+          terrain: true,
+          pitch: 45,
+          layers: [
+            new AMap.TileLayer.Satellite(),
+            new AMap.TileLayer.RoadNet({ opacity: 0.7 })
+          ]
+        });
         infoWindow = new AMap.InfoWindow({ offset: new AMap.Pixel(0, -28), closeWhenClickMap: true });
         drawLegs();
         drawHikingTrails();
@@ -437,7 +447,7 @@
           try { cb(); } finally { try { delete window[cbName]; } catch (e) {} }
         };
         var s = document.createElement('script');
-        s.src = 'https://webapi.amap.com/maps?v=2.0&key=' + encodeURIComponent(key) + '&callback=' + cbName + '&plugin=AMap.Geocoder';
+        s.src = 'https://webapi.amap.com/maps?v=2.1Beta&key=' + encodeURIComponent(key) + '&callback=' + cbName + '&plugin=AMap.Geocoder';
         s.onerror = function () { alert('高德 JS API 加载失败，请检查 JS API Key 与网络'); };
         document.head.appendChild(s);
       }
