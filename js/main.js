@@ -61,6 +61,9 @@
       var parts = [];
       ['district', 'street', 'community'].forEach(function (kind) {
         var v = $(prefix + '_' + kind).value;
+        if (kind === 'street' && v === '公共交通/地标') {
+          v = '公共地标';
+        }
         if (v) parts.push(v);
       });
       return parts.join(' / ');
@@ -113,7 +116,7 @@
         if (streetKeys.indexOf(transitKey) !== -1) {
           var transitOpt = document.createElement('option');
           transitOpt.value = transitKey;
-          transitOpt.textContent = transitKey;
+          transitOpt.textContent = '公共地标';
           streetSel.insertBefore(transitOpt, streetSel.firstChild);
         }
         streetKeys.forEach(function (street) {
