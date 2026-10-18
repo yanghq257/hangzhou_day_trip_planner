@@ -206,6 +206,12 @@ details.advanced[open] summary::before {
   margin-bottom: 0;
 }
 
+/* 街道单选列表首项「公共地标」需完整可见，增加顶部内边距避免首行被截断 */
+#origin_street.cascade,
+#destination_street.cascade {
+  padding-top: 14px;
+}
+
 .selected-address {
   min-height: 38px;
   padding: 9px 12px;
