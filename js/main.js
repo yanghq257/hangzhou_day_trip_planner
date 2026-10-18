@@ -15,6 +15,15 @@
   var $ = function (id) { return document.getElementById(id); };
 
   // -------------------------------------------------------------------------
+  // 高德全局配置（内置 Key + 安全密钥），优先供路线库模式免填使用；
+  // 用户手动输入仍可覆盖。
+  // -------------------------------------------------------------------------
+  var AMAP_CONFIG = {
+    key: "7e24d842edd9222b450135d68ab51e2a",
+    securityJsCode: "cc9b23db5b71da5af90a9b8ddb0e92e3"
+  };
+
+  // -------------------------------------------------------------------------
   // 错误提示
   // -------------------------------------------------------------------------
   function showError(msg) {
@@ -202,6 +211,21 @@
   }
 
   // -------------------------------------------------------------------------
+  // 路线库选择器
+  // -------------------------------------------------------------------------
+  function initRouteLibrary() {
+    var sel = $('route-library-select');
+    if (!sel || !window.TripEngine || !window.TripEngine.ROUTE_LIBRARY) return;
+    var list = window.TripEngine.ROUTE_LIBRARY;
+    for (var i = 0; i < list.length; i++) {
+      var opt = document.createElement('option');
+      opt.value = list[i].routeName;
+      opt.textContent = (list[i].hiking ? '🥾 ' : '🚶 ') + list[i].routeName + '（' + list[i].region + '）';
+      sel.appendChild(opt);
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // 必去景点 chips
   // -------------------------------------------------------------------------
   var mustVisitItems = [];
@@ -312,7 +336,8 @@
       destination: readAddressState('destination'),
       hiking: hikingRadio ? hikingRadio.value : '是',
       mustVisit: mustVisitItems.slice(),
-      count: $('count').value
+      count: $('count').value,
+      route: ($('route-library-select') ? $('route-library-select').value : '')
     };
     sessionSet('trip_form_state', JSON.stringify(state));
   }
@@ -352,6 +377,11 @@
 
     restoreAddress('origin', st.origin);
     restoreAddress('destination', st.destination);
+
+    if (st.route) {
+      var routeSel = $('route-library-select');
+      if (routeSel) routeSel.value = st.route;
+    }
 
     if (st.hiking) {
       var radios = document.querySelectorAll('input[name="hiking"]');
@@ -443,7 +473,52 @@
         storageRemove('amap_js_security_code');
       }
 
-      // 地址：下拉选中则拼接「区+街道+社区」完整地址；未选中才读手动输入
+      // SDK Key 与安全密钥：优先用户输入，缺省回退内置 AMAP_CONFIG
+      var sdkKey = jsKey || AMAP_CONFIG.key;
+      var sdkSecurity = securityCode || AMAP_CONFIG.securityJsCode;
+
+      var submitBtn = form.querySelector('button[type="submit"]');
+
+      function resetSubmitBtn() {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '生成路线'; }
+      }
+
+      function commitPlan(planPromise) {
+        planPromise.then(function (plan) {
+          console.log('[main] 规划成功，写入 sessionStorage 并跳转');
+          saveFormState();
+          try {
+            sessionStorage.setItem('trip_plan_result', JSON.stringify(plan));
+          } catch (err) {
+            resetSubmitBtn();
+            alert('浏览器本地存储不可用，无法传递结果：' + (err && err.message ? err.message : err));
+            return;
+          }
+          window.location.href = 'result.html';
+        }).catch(function (err) {
+          console.error('[main] 规划失败', err);
+          resetSubmitBtn();
+          alert(err && err.message ? err.message : String(err));
+        });
+      }
+
+      // 路线库模式：选中内置路线时，使用该路线固定点位规划
+      var routeSel = $('route-library-select');
+      var routeName = (routeSel && routeSel.value ? routeSel.value : '').trim();
+      if (routeName) {
+        if (!sdkKey || !sdkSecurity) {
+          showError('请填写高德JS API Key 和安全密钥');
+          return;
+        }
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '规划中…'; }
+        console.log('[main] 路线库模式，路线：', routeName);
+        commitPlan(loadAMapSDK(sdkKey, sdkSecurity).then(function () {
+          return window.TripEngine.planRoute(routeName, sdkKey);
+        }));
+        return;
+      }
+
+      // 手动模式：地址（下拉选中则拼接「区+街道+社区」完整地址；未选中才读手动输入）
       var origin = '';
       var destination = '';
       ['origin', 'destination'].forEach(function (prefix) {
@@ -469,41 +544,18 @@
       var count = parseInt(($('count').value || '').trim(), 10);
       var mustVisit = mustVisitItems.slice();
 
-      // SDK 需要 JS API Key + 安全密钥
-      var sdkKey = jsKey;
-      if (!sdkKey || !securityCode) {
+      if (!sdkKey || !sdkSecurity) {
         showError('请填写高德JS API Key 和安全密钥');
         return;
-      }
-
-      var submitBtn = form.querySelector('button[type="submit"]');
-
-      function resetSubmitBtn() {
-        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '生成路线'; }
       }
 
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '规划中…'; }
       console.log('[main] 开始加载高德 SDK 并规划');
 
-      loadAMapSDK(sdkKey, securityCode).then(function () {
+      commitPlan(loadAMapSDK(sdkKey, sdkSecurity).then(function () {
         console.log('[main] 高德 SDK 加载完成，开始 TripEngine.planTrip');
         return window.TripEngine.planTrip(origin, destination, hiking, mustVisit, count, sdkKey);
-      }).then(function (plan) {
-        console.log('[main] 规划成功，写入 sessionStorage 并跳转');
-        saveFormState();
-        try {
-          sessionStorage.setItem('trip_plan_result', JSON.stringify(plan));
-        } catch (err) {
-          resetSubmitBtn();
-          alert('浏览器本地存储不可用，无法传递结果：' + (err && err.message ? err.message : err));
-          return;
-        }
-        window.location.href = 'result.html';
-      }).catch(function (err) {
-        console.error('[main] 规划失败', err);
-        resetSubmitBtn();
-        alert(err && err.message ? err.message : String(err));
-      });
+      }));
     });
   }
 
@@ -512,7 +564,10 @@
   // -------------------------------------------------------------------------
   function init() {
     initKeys();
-    if (window.TripEngine) initAddressSelectors();
+    if (window.TripEngine) {
+      initAddressSelectors();
+      initRouteLibrary();
+    }
     initMustVisit();
     initCount();
     bindForm();

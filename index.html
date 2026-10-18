@@ -14,6 +14,11 @@
       }
     })();
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/vconsole@latest/dist/vconsole.min.js"></script>
+  <script>
+    // 初始化 vConsole
+    var vConsole = new VConsole();
+  </script>
 </head>
 <body>
   <div class="container">
@@ -41,6 +46,14 @@
           </div>
         </div>
       </details>
+
+      <div class="field">
+        <span>🗺️ 路线库（快速规划，可选）</span>
+        <select id="route-library-select" class="cascade">
+          <option value="">不使用路线库（手动规划）</option>
+        </select>
+        <p class="hint">选择内置路线后，将使用该路线固定点位规划，忽略下方出发/返回地址与景点数量</p>
+      </div>
 
       <div class="field">
         <span>📍 出发地址</span>
@@ -126,7 +139,7 @@
     </form>
   </div>
 
-  <script src="js/trip-engine.js?v=3"></script>
-  <script src="js/main.js"></script>
+  <script src="js/trip-engine.js?v=4"></script>
+  <script src="js/main.js?v=2"></script>
 </body>
 </html>

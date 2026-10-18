@@ -444,7 +444,27 @@
      description: "西湖毅行北高峰‑美人峰‑龙门山中间节点，临近石人亭，十里龙脊主线山脊点位。",
      start_climb_point: "美人峰西向山脊", start_climb_lng: 120.0930, start_climb_lat: 30.2490,
      end_climb_point: "龙门山东侧岔口", end_climb_lng: 120.0870, end_climb_lat: 30.2430,
-     hiking_duration_min: 40}
+     hiking_duration_min: 40},
+    {name: "良渚古城遗址公园", lng: 120.0150, lat: 30.4050, is_hiking: false,
+     visit_minutes: 120, is_water_island: false,
+     description: "良渚古城遗址，世界文化遗产，实证中华五千年文明史的都邑遗址公园。",
+     category: "世界遗产"},
+    {name: "杭州奥体中心", lng: 120.2350, lat: 30.2050, is_hiking: false,
+     visit_minutes: 60, is_water_island: false,
+     description: "杭州奥体中心主体育场（大莲花），钱塘江南岸现代地标建筑。",
+     category: "现代地标"},
+    {name: "宋城景区", lng: 120.0950, lat: 30.1750, is_hiking: false,
+     visit_minutes: 120, is_water_island: false,
+     description: "宋城景区，大型宋文化主题公园，《宋城千古情》演出地。",
+     category: "人文景区"},
+    {name: "八卦田遗址公园", lng: 120.1600, lat: 30.2250, is_hiking: false,
+     visit_minutes: 60, is_water_island: false,
+     description: "八卦田遗址公园，南宋皇家籍田，玉皇山南麓田园景观。",
+     category: "历史遗址"},
+    {name: "白塔公园", lng: 120.1450, lat: 30.2150, is_hiking: false,
+     visit_minutes: 45, is_water_island: false,
+     description: "白塔公园，钱塘江畔历史遗址公园，工业遗存与铁路文化结合。",
+     category: "历史遗址"}
   ];
 
   var PLACE_BY_NAME = {};
@@ -472,6 +492,349 @@
     "锅子顶山脊": "锅子顶",
     "将台山石刻": "将台山"
   };
+
+  // -------------------------------------------------------------------------
+  // 内置路线库（20条：10平地步行 + 10爬山/山平地组合），点位坐标全部硬编码
+  // -------------------------------------------------------------------------
+  var ROUTE_LIBRARY = [
+    {
+      routeName: "北山街白堤经典湖景线",
+      region: "西湖区",
+      hiking: false,
+      totalDistanceKm: 3.6,
+      totalClimbM: 0,
+      durationHour: 3,
+      description: "沿湖平路，无爬升，西湖核心北岸风光",
+      points: [
+        { name: "断桥", lng: 120.1474, lat: 30.2627 },
+        { name: "白堤", lng: 120.1445, lat: 30.2616 },
+        { name: "平湖秋月", lng: 120.1412, lat: 30.2604 },
+        { name: "孤山（西泠印社）", lng: 120.1375, lat: 30.2593 },
+        { name: "西泠桥", lng: 120.1341, lat: 30.2585 },
+        { name: "岳王庙", lng: 120.1302, lat: 30.2576 }
+      ]
+    },
+    {
+      routeName: "西湖南线园林漫步线",
+      region: "西湖区",
+      hiking: false,
+      totalDistanceKm: 3.2,
+      totalClimbM: 0,
+      durationHour: 2.5,
+      description: "南山路平地，园林、湖景、古寺",
+      points: [
+        { name: "钱王祠", lng: 120.1422, lat: 30.2430 },
+        { name: "柳浪闻莺", lng: 120.1456, lat: 30.2405 },
+        { name: "长桥公园", lng: 120.1471, lat: 30.2372 },
+        { name: "雷峰塔", lng: 120.1443, lat: 30.2351 },
+        { name: "净慈寺", lng: 120.1418, lat: 30.2344 },
+        { name: "太子湾公园", lng: 120.1385, lat: 30.2336 }
+      ]
+    },
+    {
+      routeName: "杨公堤秘境慢游线",
+      region: "西湖区",
+      hiking: false,
+      totalDistanceKm: 3.8,
+      totalClimbM: 0,
+      durationHour: 3,
+      description: "人少安静，湖边平地，园林水湾，无登山台阶",
+      points: [
+        { name: "郭庄", lng: 120.1204, lat: 30.2467 },
+        { name: "曲院风荷西区", lng: 120.1246, lat: 30.2492 },
+        { name: "乌龟潭", lng: 120.1175, lat: 30.2441 },
+        { name: "浴鹄湾", lng: 120.1142, lat: 30.2425 }
+      ]
+    },
+    {
+      routeName: "运河文化老街线",
+      region: "拱墅区",
+      hiking: false,
+      totalDistanceKm: 3.5,
+      totalClimbM: 0,
+      durationHour: 3,
+      description: "运河沿岸平路，老杭州街巷、古寺、文艺街区",
+      points: [
+        { name: "香积寺", lng: 120.1420, lat: 30.2994 },
+        { name: "大兜路历史街区", lng: 120.1401, lat: 30.2971 },
+        { name: "小河直街", lng: 120.1346, lat: 30.2943 },
+        { name: "小河公园", lng: 120.1321, lat: 30.2920 }
+      ]
+    },
+    {
+      routeName: "拱宸桥运河文博线",
+      region: "拱墅区",
+      hiking: false,
+      totalDistanceKm: 2.8,
+      totalClimbM: 0,
+      durationHour: 2.5,
+      description: "大运河古迹，全部城市平地，博物馆集群",
+      points: [
+        { name: "拱宸桥", lng: 120.1484, lat: 30.3172 },
+        { name: "桥西历史街区", lng: 120.1462, lat: 30.3155 },
+        { name: "中国伞博物馆", lng: 120.1447, lat: 30.3142 },
+        { name: "扇博物馆", lng: 120.1433, lat: 30.3130 },
+        { name: "运河天地", lng: 120.1410, lat: 30.3116 }
+      ]
+    },
+    {
+      routeName: "南宋老城烟火线",
+      region: "上城区",
+      hiking: false,
+      totalDistanceKm: 3.0,
+      totalClimbM: 0,
+      durationHour: 3,
+      description: "老城区街巷，美食密集，全程平地，不上吴山",
+      points: [
+        { name: "德寿宫", lng: 120.1701, lat: 30.2421 },
+        { name: "鼓楼", lng: 120.1668, lat: 30.2375 },
+        { name: "大马弄", lng: 120.1651, lat: 30.2362 },
+        { name: "十五奎巷", lng: 120.1630, lat: 30.2348 },
+        { name: "晓霞弄", lng: 120.1617, lat: 30.2340 },
+        { name: "南宋御街、河坊街", lng: 120.1643, lat: 30.2354 }
+      ]
+    },
+    {
+      routeName: "五柳巷老城水乡线",
+      region: "上城区",
+      hiking: false,
+      totalDistanceKm: 2.6,
+      totalClimbM: 0,
+      durationHour: 2,
+      description: "城市小河、古桥，老杭州民居，完全平路",
+      points: [
+        { name: "五柳巷历史街区", lng: 120.1784, lat: 30.2442 },
+        { name: "斗富一/二/三桥", lng: 120.1761, lat: 30.2426 },
+        { name: "水上巴士梅花碑码头", lng: 120.1732, lat: 30.2410 },
+        { name: "庆春门古城墙遗址", lng: 120.1807, lat: 30.2465 }
+      ]
+    },
+    {
+      routeName: "钱江新城城市滨江线",
+      region: "上城区",
+      hiking: false,
+      totalDistanceKm: 3.4,
+      totalClimbM: 0,
+      durationHour: 2.5,
+      description: "现代都市江景，宽阔滨江步道，适合傍晚夜游",
+      points: [
+        { name: "城市阳台", lng: 120.2116, lat: 30.2573 },
+        { name: "杭州大剧院", lng: 120.2082, lat: 30.2551 },
+        { name: "日月同辉", lng: 120.2054, lat: 30.2534 },
+        { name: "来福士", lng: 120.2021, lat: 30.2516 },
+        { name: "钱王射潮雕塑", lng: 120.1976, lat: 30.2490 }
+      ]
+    },
+    {
+      routeName: "西湖文化广场人文线",
+      region: "拱墅/西湖交界",
+      hiking: false,
+      totalDistanceKm: 2.7,
+      totalClimbM: 0,
+      durationHour: 2,
+      description: "市中心城市慢行，博物馆+商圈结合",
+      points: [
+        { name: "西湖文化广场", lng: 120.1507, lat: 30.2684 },
+        { name: "武林码头", lng: 120.1482, lat: 30.2661 },
+        { name: "环北公园", lng: 120.1460, lat: 30.2643 },
+        { name: "武林路女装街", lng: 120.1431, lat: 30.2620 },
+        { name: "龙游路", lng: 120.1414, lat: 30.2607 }
+      ]
+    },
+    {
+      routeName: "虎跑-苏堤南段休闲线",
+      region: "西湖区",
+      hiking: false,
+      totalDistanceKm: 3.3,
+      totalClimbM: 0,
+      durationHour: 2.5,
+      description: "平地湖滨步道，不用上山，公园密林湖景",
+      points: [
+        { name: "虎跑公园门口", lng: 120.1243, lat: 30.2303 },
+        { name: "花港观鱼", lng: 120.1326, lat: 30.2365 },
+        { name: "苏堤南段（映波桥）", lng: 120.1347, lat: 30.2381 },
+        { name: "苏堤南段（锁澜桥）", lng: 120.1368, lat: 30.2397 }
+      ]
+    },
+    {
+      routeName: "宝石山环湖组合线",
+      region: "西湖区",
+      hiking: true,
+      totalDistanceKm: 5,
+      totalClimbM: 180,
+      durationHour: 2.5,
+      description: "爬山+湖景步行组合。上山台阶不多，登顶俯瞰西湖，后半段沿湖平路慢行，可随时下撤，主城区入门登山线",
+      points: [
+        { name: "少年宫（断桥北侧）", lng: 120.1472, lat: 30.2628 },
+        { name: "宝石山保俶塔", lng: 120.1439, lat: 30.2645 },
+        { name: "蛤蟆峰", lng: 120.1428, lat: 30.2651 },
+        { name: "紫云洞", lng: 120.1401, lat: 30.2649 },
+        { name: "葛岭", lng: 120.1382, lat: 30.2626 },
+        { name: "曲院风荷", lng: 120.1271, lat: 30.2594 }
+      ]
+    },
+    {
+      routeName: "老和山-北高峰线",
+      region: "西湖区",
+      hiking: true,
+      totalDistanceKm: 7,
+      totalClimbM: 310,
+      durationHour: 3.5,
+      description: "经典山脊登山，成熟游步道；终点可选灵隐外围平地游览，做成山+古寺平地组合",
+      points: [
+        { name: "老和云起牌坊(古荡)", lng: 120.1160, lat: 30.2797 },
+        { name: "老和山山顶", lng: 120.1125, lat: 30.2812 },
+        { name: "将军山", lng: 120.1081, lat: 30.2786 },
+        { name: "灵峰山", lng: 120.1043, lat: 30.2745 },
+        { name: "北高峰灵顺寺", lng: 120.0966, lat: 30.2704 },
+        { name: "灵隐寺外围", lng: 120.0907, lat: 30.2615 }
+      ]
+    },
+    {
+      routeName: "九溪十八涧+十里琅珰轻穿越",
+      region: "西湖区",
+      hiking: true,
+      totalDistanceKm: 8,
+      totalClimbM: 320,
+      durationHour: 4,
+      description: "前半段溪流平地，后半段茶园山脊爬山，一平一升，风景层次强，多条中途下撤点",
+      points: [
+        { name: "九溪公交站", lng: 120.1106, lat: 30.2311 },
+        { name: "九溪烟树", lng: 120.1048, lat: 30.2337 },
+        { name: "九溪十八涧", lng: 120.0992, lat: 30.2374 },
+        { name: "龙井村", lng: 120.0920, lat: 30.2432 },
+        { name: "十里琅珰山脊", lng: 120.0864, lat: 30.2481 },
+        { name: "五云山真际寺", lng: 120.0768, lat: 30.2425 }
+      ]
+    },
+    {
+      routeName: "玉皇山+八卦田组合",
+      region: "上城区",
+      hiking: true,
+      totalDistanceKm: 5,
+      totalClimbM: 240,
+      durationHour: 2.5,
+      description: "登山+田园平地组合，山顶同时看西湖+钱塘江；下山直接逛八卦田平地，人文景观密集",
+      points: [
+        { name: "水澄桥", lng: 120.1454, lat: 30.2170 },
+        { name: "玉皇山登山口", lng: 120.1432, lat: 30.2192 },
+        { name: "七星缸", lng: 120.1405, lat: 30.2227 },
+        { name: "紫来洞", lng: 120.1387, lat: 30.2241 },
+        { name: "玉皇顶福星观", lng: 120.1371, lat: 30.2256 },
+        { name: "八卦田", lng: 120.1350, lat: 30.2183 }
+      ]
+    },
+    {
+      routeName: "吴山-凤凰山环线",
+      region: "上城区",
+      hiking: true,
+      totalDistanceKm: 7.5,
+      totalClimbM: 210,
+      durationHour: 3.5,
+      description: "低海拔小山，山林登山+老城街巷步行组合，全程在主城区，城市烟火+山景一体",
+      points: [
+        { name: "吴山广场", lng: 120.1673, lat: 30.2344 },
+        { name: "吴山城隍阁", lng: 120.1655, lat: 30.2368 },
+        { name: "江湖汇观亭", lng: 120.1632, lat: 30.2376 },
+        { name: "万松书院", lng: 120.1584, lat: 30.2342 },
+        { name: "凤凰山凤凰亭", lng: 120.1546, lat: 30.2320 },
+        { name: "梵天寺遗址", lng: 120.1512, lat: 30.2294 },
+        { name: "十五奎巷", lng: 120.1621, lat: 30.2331 }
+      ]
+    },
+    {
+      routeName: "半山国家森林公园（望宸阁环线）",
+      region: "拱墅区",
+      hiking: true,
+      totalDistanceKm: 8,
+      totalClimbM: 330,
+      durationHour: 3.5,
+      description: "拱墅主城区唯一大山，完整闭环环线，山顶楼阁，后半段水库平缓绿道，爬山+水库平地组合",
+      points: [
+        { name: "半山公园南门", lng: 120.1834, lat: 30.3348 },
+        { name: "望宸阁山顶", lng: 120.1785, lat: 30.3386 },
+        { name: "龙山山脊", lng: 120.1742, lat: 30.3365 },
+        { name: "虎山山脊", lng: 120.1710, lat: 30.3322 },
+        { name: "虎山水库绿道", lng: 120.1761, lat: 30.3298 }
+      ]
+    },
+    {
+      routeName: "贵人阁+虎跑组合线",
+      region: "西湖区",
+      hiking: true,
+      totalDistanceKm: 6.2,
+      totalClimbM: 280,
+      durationHour: 3,
+      description: "先平地园林，再登山登顶，贵人阁视野极佳，俯瞰钱江+西湖，下山可走满觉陇平路",
+      points: [
+        { name: "虎跑公园大门", lng: 120.1241, lat: 30.2305 },
+        { name: "虎跑园林平地", lng: 120.1224, lat: 30.2326 },
+        { name: "贵人阁山顶", lng: 120.1182, lat: 30.2378 },
+        { name: "马儿山岗山脊", lng: 120.1154, lat: 30.2401 },
+        { name: "满觉陇", lng: 120.1110, lat: 30.2386 }
+      ]
+    },
+    {
+      routeName: "十里琅珰精华小环线",
+      region: "西湖区",
+      hiking: true,
+      totalDistanceKm: 6.5,
+      totalClimbM: 260,
+      durationHour: 3,
+      description: "西湖群山招牌山脊，茶园连绵；首尾两段是茶村平地，中间山脊爬山，组合型路线",
+      points: [
+        { name: "梅家坞", lng: 120.0712, lat: 30.2463 },
+        { name: "梅家坞茶园平地", lng: 120.0745, lat: 30.2475 },
+        { name: "十里琅珰山脊起点", lng: 120.0796, lat: 30.2498 },
+        { name: "三分叉", lng: 120.0847, lat: 30.2472 },
+        { name: "龙井村下山口", lng: 120.0914, lat: 30.2436 }
+      ]
+    },
+    {
+      routeName: "将台山+玉皇山串联线",
+      region: "上城区",
+      hiking: true,
+      totalDistanceKm: 6.8,
+      totalClimbM: 270,
+      durationHour: 3.2,
+      description: "南宋遗址山林登山，多条历史古迹，山顶江景湖景，下山八卦田平地",
+      points: [
+        { name: "万松书院", lng: 120.1582, lat: 30.2344 },
+        { name: "将台山", lng: 120.1551, lat: 30.2358 },
+        { name: "凤凰亭", lng: 120.1533, lat: 30.2335 },
+        { name: "玉皇山福星观", lng: 120.1374, lat: 30.2254 },
+        { name: "紫来洞", lng: 120.1389, lat: 30.2240 },
+        { name: "八卦田", lng: 120.1352, lat: 30.2181 }
+      ]
+    },
+    {
+      routeName: "西湖标毅简化中段（北高峰→五云山）",
+      region: "西湖区",
+      hiking: true,
+      totalDistanceKm: 11,
+      totalClimbM: 620,
+      durationHour: 5,
+      description: "进阶山脊穿越，纯山野步道，适合体能好用户；两端可接灵隐、九溪平地，做成山+平地组合",
+      points: [
+        { name: "北高峰灵顺寺", lng: 120.0965, lat: 30.2702 },
+        { name: "美人峰", lng: 120.0902, lat: 30.2641 },
+        { name: "龙门亭", lng: 120.0853, lat: 30.2584 },
+        { name: "石人亭", lng: 120.0811, lat: 30.2532 },
+        { name: "十里琅珰", lng: 120.0866, lat: 30.2480 },
+        { name: "五云山真际寺", lng: 120.0766, lat: 30.2423 }
+      ]
+    }
+  ];
+
+  // 路线点位名称 -> 坐标（供 resolveAddress 本地优先匹配，CITY_LOCATIONS 之后兜底）
+  var ROUTE_POINT_BY_NAME = {};
+  ROUTE_LIBRARY.forEach(function (r) {
+    (r.points || []).forEach(function (p) {
+      if (!Object.prototype.hasOwnProperty.call(ROUTE_POINT_BY_NAME, p.name)) {
+        ROUTE_POINT_BY_NAME[p.name] = [p.lng, p.lat];
+      }
+    });
+  });
 
   // -------------------------------------------------------------------------
   // 基础工具
@@ -648,6 +1011,21 @@
     return result;
   }
 
+  // 计算一组坐标点的几何中心（重心）
+  function centroidOf(points) {
+    var lng = 0, lat = 0, n = 0;
+    for (var i = 0; i < points.length; i++) {
+      var p = points[i];
+      if (p && typeof p.lng === 'number' && typeof p.lat === 'number') {
+        lng += p.lng;
+        lat += p.lat;
+        n += 1;
+      }
+    }
+    if (!n) return { lng: 120.15, lat: 30.25 };
+    return { lng: lng / n, lat: lat / n };
+  }
+
   // -------------------------------------------------------------------------
   // 高德 JS SDK 封装（替代原 REST 调用）
   // -------------------------------------------------------------------------
@@ -747,8 +1125,14 @@
 
   function resolveAddress(address, key) {
     var addr = (address || '').trim();
+    // 本地内置坐标库优先：CITY_LOCATIONS -> 路线库点位，命中则不再调用 geocoder
+    var coords = null;
     if (Object.prototype.hasOwnProperty.call(CITY_LOCATIONS, addr)) {
-      var coords = CITY_LOCATIONS[addr];
+      coords = CITY_LOCATIONS[addr];
+    } else if (Object.prototype.hasOwnProperty.call(ROUTE_POINT_BY_NAME, addr)) {
+      coords = ROUTE_POINT_BY_NAME[addr];
+    }
+    if (coords) {
       return Promise.resolve({
         formatted: addr,
         lng: coords[0],
@@ -1035,24 +1419,24 @@
       });
 
       var candidates = pool.filter(function (p) { return !included[p.name]; });
-      var current = route.length ? route[route.length - 1] : originGeo;
+
+      // 重心法：以「出发地 + 返回地 + 必去景点」的几何中心作为候选点筛选基准，
+      // 避免候选点全部挤在出发地附近，导致去远处必去点时严重绕路。
+      var center = centroidOf([originGeo, destGeo].concat(route));
 
       while (route.length < count && candidates.length) {
+        var pick = null;
         if (hikingBool && !route.some(function (p) { return p.is_hiking; })) {
           var hikingPool = candidates.filter(function (p) { return p.is_hiking; });
-          if (hikingPool.length) {
-            var nxtHiking = nearest(current, hikingPool);
-            candidates.splice(candidates.indexOf(nxtHiking), 1);
-            route.push(nxtHiking);
-            current = nxtHiking;
-            continue;
-          }
+          if (hikingPool.length) pick = nearest(center, hikingPool);
         }
-        var nxt = nearest(current, candidates);
-        candidates.splice(candidates.indexOf(nxt), 1);
-        route.push(nxt);
-        current = nxt;
+        if (!pick) pick = nearest(center, candidates);
+        candidates.splice(candidates.indexOf(pick), 1);
+        route.push(pick);
       }
+
+      // 选完后再按最近邻重新排序，保证从出发地开始的整体路线顺滑。
+      route = greedyOrder(originGeo, route);
 
       console.log('[planTrip] 景点筛选完成，最终景点数', route.length, route.map(function (p) { return p.name; }));
 
@@ -1158,6 +1542,129 @@
   }
 
   // -------------------------------------------------------------------------
+  // 路线库快速规划：points[0] 为起点，points[last] 为终点，中间点按固定顺序组成景点
+  // -------------------------------------------------------------------------
+  function planRoute(routeName, key) {
+    if (!key) return Promise.reject(new PlanError('请先填写高德 API Key'));
+
+    var route = null;
+    for (var i = 0; i < ROUTE_LIBRARY.length; i++) {
+      if (ROUTE_LIBRARY[i].routeName === routeName) {
+        route = ROUTE_LIBRARY[i];
+        break;
+      }
+    }
+    if (!route) return Promise.reject(new PlanError('未找到内置路线：' + routeName));
+
+    var pts = route.points || [];
+    if (pts.length < 2) {
+      return Promise.reject(new PlanError('内置路线「' + routeName + '」点位不足，无法规划'));
+    }
+
+    function makeGeo(pt) {
+      return {
+        formatted: pt.name,
+        lng: pt.lng,
+        lat: pt.lat,
+        province: '浙江省',
+        city: '杭州市',
+        district: '',
+        adcode: '330100'
+      };
+    }
+
+    var originGeo = makeGeo(pts[0]);
+    var destGeo = makeGeo(pts[pts.length - 1]);
+
+    // 每条路线的总时长按中间点位数均摊，作为各中间点位的停留时长估算
+    var visitEach = Math.max(20, Math.round((route.durationHour || 2) * 60 / Math.max(2, pts.length - 2)));
+    var spots = [];
+    for (var j = 1; j < pts.length - 1; j++) {
+      spots.push({
+        name: pts[j].name,
+        lng: pts[j].lng,
+        lat: pts[j].lat,
+        is_hiking: !!route.hiking,
+        visit_minutes: visitEach,
+        is_water_island: false,
+        description: route.description
+      });
+    }
+
+    var hikingLabel = route.hiking ? '是' : '否';
+    var warnings = [];
+
+    var work = buildLegs(originGeo, destGeo, spots, key).then(function (legResult) {
+      var legs = legResult[0];
+      var legWarnings = legResult[1];
+      legWarnings.forEach(function (w) { warnings.push(w); });
+
+      var tl = buildTimeline(originGeo, destGeo, spots, legs);
+      var timeline = tl[0];
+      var totalMinutes = tl[1];
+      var travelTotal = tl[2];
+      var visitTotal = tl[3];
+
+      if (totalMinutes > MAX_TOTAL_MINUTES) {
+        warnings.push('总时长约 ' + totalMinutes + ' 分钟（超过 ' + MAX_TOTAL_MINUTES + ' 分钟），超出一天合理范围');
+      }
+      if (visitTotal > 0 && travelTotal > visitTotal * TRAVEL_RATIO_WARN) {
+        var ratio = travelTotal / visitTotal;
+        warnings.push('路上耗时约 ' + travelTotal + ' 分钟，占游玩时长 ' + visitTotal + ' 分钟的 ' + Math.round(ratio * 100) + '%，比例偏高');
+      }
+
+      var legsForMap = legs.map(function (leg) {
+        return {
+          mode: leg.mode,
+          from_name: leg.start_name,
+          to_name: leg.end_name,
+          polyline: (leg.polyline || []).map(function (pt) {
+            return [parseFloat(pt[0]), parseFloat(pt[1])];
+          })
+        };
+      });
+
+      var hikingMarkers = [];
+      var hikingTrails = [];
+      if (route.hiking) {
+        var allSpots = [originGeo].concat(spots).concat([destGeo]);
+        allSpots.forEach(function (p) {
+          hikingMarkers.push({ name: p.name || p.formatted, lng: p.lng, lat: p.lat });
+        });
+        for (var k = 0; k < allSpots.length - 1; k++) {
+          hikingTrails.push([[allSpots[k].lng, allSpots[k].lat], [allSpots[k + 1].lng, allSpots[k + 1].lat]]);
+        }
+      }
+
+      return {
+        origin: originGeo.formatted,
+        destination: destGeo.formatted,
+        hiking: hikingLabel,
+        count_requested: spots.length,
+        route_name: routeName,
+        spots: spots,
+        timeline: timeline,
+        total_minutes: totalMinutes,
+        travel_total: travelTotal,
+        visit_total: visitTotal,
+        warnings: warnings,
+        origin_lng: originGeo.lng,
+        origin_lat: originGeo.lat,
+        destination_lng: destGeo.lng,
+        destination_lat: destGeo.lat,
+        legs: legsForMap,
+        hiking_markers: hikingMarkers,
+        hiking_trails: hikingTrails
+      };
+    });
+
+    return withTimeout(work, 60000, '路线规划超时').catch(function (err) {
+      console.error('[planRoute] 路线规划异常', err);
+      throw err;
+    });
+  }
+
+  // -------------------------------------------------------------------------
   // 导出
   // -------------------------------------------------------------------------
   global.TripEngine = {
@@ -1174,6 +1681,8 @@
     MULTI_CONNECTED_HIKING: MULTI_CONNECTED_HIKING,
     CITY_LOCATIONS: CITY_LOCATIONS,
     DISTRICT_STREET_COMMUNITY: DISTRICT_STREET_COMMUNITY,
+    ROUTE_LIBRARY: ROUTE_LIBRARY,
+    ROUTE_POINT_BY_NAME: ROUTE_POINT_BY_NAME,
     PLACES: PLACES,
     PLACE_BY_NAME: PLACE_BY_NAME,
     PLACE_ALIAS: PLACE_ALIAS,
@@ -1194,6 +1703,7 @@
     buildLegs: buildLegs,
     buildTimeline: buildTimeline,
     simplify: simplify,
-    planTrip: planTrip
+    planTrip: planTrip,
+    planRoute: planRoute
   };
 })(window);
