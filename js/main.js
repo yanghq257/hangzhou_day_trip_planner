@@ -108,7 +108,16 @@
         manualInput.value = '';
         if (!district) { updateDisplay(prefix); return; }
         var streets = tree[district] || {};
-        Object.keys(streets).forEach(function (street) {
+        var streetKeys = Object.keys(streets);
+        var transitKey = '公共交通/地标';
+        if (streetKeys.indexOf(transitKey) !== -1) {
+          var transitOpt = document.createElement('option');
+          transitOpt.value = transitKey;
+          transitOpt.textContent = transitKey;
+          streetSel.insertBefore(transitOpt, streetSel.firstChild);
+        }
+        streetKeys.forEach(function (street) {
+          if (street === transitKey) return;
           var opt = document.createElement('option');
           opt.value = street;
           opt.textContent = street;
