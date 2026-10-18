@@ -69,7 +69,8 @@
     "钱江新城市民中心": [120.2120, 30.2460],
     "新城国际花园彩园": [120.2143, 30.2584],  // 上城区钱江新城庆和路69号
     "滨江区政府": [120.2070, 30.2110],
-    "拱宸桥": [120.1450, 30.3180]
+    "拱宸桥": [120.1450, 30.3180],
+    "浙一医院庆春院区": [120.1727, 30.2684]  // 上城区庆春路79号
   };
 
   var DISTRICT_STREET_COMMUNITY = {
@@ -84,7 +85,7 @@
       "近江街道": ["近江小区"],
       "紫阳街道": ["凤凰北苑"],
       "彭埠街道": ["艮山府"],
-      "公共交通/地标": ["城站火车站", "钱江新城森林公园"]
+      "公共交通/地标": ["城站火车站", "钱江新城森林公园", "浙一医院庆春院区"]
     },
     "西湖区": {
       "蒋村街道": ["中杭府", "西溪诚园", "万科西庐", "蒋村花园", "西溪蝶园", "河滨之城", "融创河滨之城"],
@@ -1131,6 +1132,17 @@
       coords = CITY_LOCATIONS[addr];
     } else if (Object.prototype.hasOwnProperty.call(ROUTE_POINT_BY_NAME, addr)) {
       coords = ROUTE_POINT_BY_NAME[addr];
+    } else {
+      // 出发/返回地址下拉会拼接「区+街道+小区/地标」，如「上城区公共交通/地标浙一医院庆春院区」；
+      // 此处按末段匹配 CITY_LOCATIONS，命中后直接使用硬编码坐标，避免再走 geocoder。
+      var cityNames = Object.keys(CITY_LOCATIONS);
+      for (var i = 0; i < cityNames.length; i++) {
+        var name = cityNames[i];
+        if (name && addr.length > name.length && addr.lastIndexOf(name) === addr.length - name.length) {
+          coords = CITY_LOCATIONS[name];
+          break;
+        }
+      }
     }
     if (coords) {
       return Promise.resolve({
