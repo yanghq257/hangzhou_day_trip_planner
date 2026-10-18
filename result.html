@@ -336,8 +336,9 @@
           offset: new AMap.Pixel(-13, -13)
         });
         marker.on('click', function () {
-          var html = '<div style="max-width:240px;"><strong>' + esc(title) + '</strong>';
-          if (desc) html += '<div style="color:#cbd5e1;font-size:12px;margin-top:2px;">' + esc(desc) + '</div>';
+          var html = '<div style="max-width:240px;color:#ffffff;background:rgba(15,23,42,0.92);padding:8px 10px;border-radius:6px;text-shadow:0 1px 3px rgba(0,0,0,0.9);">' +
+            '<strong style="color:#ffffff;">' + esc(title) + '</strong>';
+          if (desc) html += '<div style="color:#ffffff;font-size:12px;margin-top:2px;text-shadow:0 1px 3px rgba(0,0,0,0.9);">' + esc(desc) + '</div>';
           html += '</div>';
           infoWindow.setContent(html);
           infoWindow.open(map, marker.getPosition());
