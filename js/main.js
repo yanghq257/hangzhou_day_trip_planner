@@ -162,6 +162,56 @@
       opt.textContent = (list[i].hiking ? '🥾 ' : '🚶 ') + list[i].routeName + '（' + list[i].region + '）';
       sel.appendChild(opt);
     }
+    sel.addEventListener('change', syncRouteLibraryMode);
+    syncRouteLibraryMode();
+  }
+
+  // 路线库模式与手动表单互斥：选中路线后禁用全部手动控件，并显示提示
+  function syncRouteLibraryMode() {
+    var sel = $('route-library-select');
+    var routeActive = !!(sel && sel.value);
+
+    var hint = $('route-mode-hint');
+    if (hint) hint.style.display = routeActive ? 'block' : 'none';
+
+    // 出发/返回地址：区级与手动输入直接禁用；街道/小区按级联状态恢复
+    ['origin', 'destination'].forEach(function (prefix) {
+      var district = $(prefix + '_district');
+      var street = $(prefix + '_street');
+      var community = $(prefix + '_community');
+      var manual = $(prefix + '_manual');
+
+      if (routeActive) {
+        if (district) district.disabled = true;
+        if (street) street.disabled = true;
+        if (community) community.disabled = true;
+        if (manual) manual.disabled = true;
+      } else {
+        if (district) district.disabled = false;
+        if (street) street.disabled = !(district && district.value);
+        if (community) community.disabled = !(street && street.value);
+        if (manual) manual.disabled = false;
+      }
+    });
+
+    // 是否爬山
+    var hikingRadios = document.querySelectorAll('input[name="hiking"]');
+    for (var i = 0; i < hikingRadios.length; i++) {
+      hikingRadios[i].disabled = routeActive;
+    }
+
+    // 必去景点
+    var mustInput = $('must-visit-input');
+    var mustAdd = $('must-visit-add');
+    if (mustInput) mustInput.disabled = routeActive;
+    if (mustAdd) mustAdd.disabled = routeActive;
+
+    // 游玩景点数量
+    var countInput = $('count');
+    if (countInput) countInput.disabled = routeActive;
+
+    // 退出路线库时，恢复必去景点输入框因「已满6个」导致的禁用状态
+    if (!routeActive) renderChips();
   }
 
   // -------------------------------------------------------------------------
@@ -334,6 +384,7 @@
 
     if (st.count != null && st.count !== '') $('count').value = st.count;
     validateCount();
+    syncRouteLibraryMode();
   }
 
   // -------------------------------------------------------------------------
