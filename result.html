@@ -330,11 +330,13 @@
         else if (type === 'hiking') { bg = '#4ade80'; label = '山'; }
         else { bg = '#38bdf8'; label = '●'; }
 
-        var marker = new AMap.Marker({
+        var markerOptions = {
           position: [lng, lat],
           content: markerHTML(bg, label),
           offset: new AMap.Pixel(-13, -13)
-        });
+        };
+        if (type === 'hiking') markerOptions.zIndex = 1000;
+        var marker = new AMap.Marker(markerOptions);
         marker.on('click', function () {
           var html = '<div style="max-width:240px;color:#ffffff;background:rgba(15,23,42,0.92);padding:8px 10px;border-radius:6px;text-shadow:0 1px 3px rgba(0,0,0,0.9);">' +
             '<strong style="color:#ffffff;">' + esc(title) + '</strong>';
