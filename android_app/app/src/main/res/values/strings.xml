@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">杭州一日游</string>
+    <string name="app_name">杭州山野规划</string>
     <!-- GitHub Pages 静态站点地址 -->
     <string name="app_url">https://yanghq257.github.io/hangzhou_day_trip_planner/index.html</string>
 </resources>
