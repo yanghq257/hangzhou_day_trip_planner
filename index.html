@@ -5,15 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>杭州主城区游玩锻炼路线规划</title>
   <link rel="stylesheet" href="static/style.css">
-  <script type="text/javascript">
-    (function () {
-      var code = '';
-      try { code = localStorage.getItem('amap_js_security_code') || ''; } catch (e) {}
-      if (code) {
-        window._AMapSecurityConfig = { securityJsCode: code };
-      }
-    })();
-  </script>
 </head>
 <body>
   <div class="container">
@@ -25,7 +16,7 @@
     <div class="alert alert-error" id="form-error" style="display:none;"></div>
 
     <form class="card" id="plan-form">
-      <details class="advanced" id="advanced-config">
+      <details class="advanced" id="advanced-config" style="display:none;">
         <summary>高级配置</summary>
         <div class="advanced-body">
           <div class="field">
@@ -135,6 +126,6 @@
   </div>
 
   <script src="js/trip-engine.js?v=6"></script>
-  <script src="js/main.js?v=2"></script>
+  <script src="js/main.js?v=3"></script>
 </body>
 </html>

@@ -3,11 +3,10 @@
  *
  * 职责：
  *   1. 用内嵌的 DISTRICT_STREET_COMMUNITY 填充三级联动地址选择器；
- *   2. 管理 amap_js_api_key（JS API Key）与 amap_js_security_code（安全密钥）的 localStorage/sessionStorage 回填；
- *   3. 动态加载高德 JS API 2.0（含 Geocoder / Walking / Driving 插件）；
- *   4. 维护「必去景点」chips 与「游玩景点数量」1-6 校验；
- *   5. 拦截表单提交，浏览器本地执行 TripEngine.planTrip()，结果写入 sessionStorage 后跳转 result.html；
- *   6. 提交前把表单状态写入 sessionStorage，供 result.html「重新规划」回传还原。
+ *   2. 使用内置 AMAP_CONFIG 自动加载高德 JS API 2.0（含 Geocoder / Walking / Driving 插件）；
+ *   3. 维护「必去景点」chips 与「游玩景点数量」1-6 校验；
+ *   4. 拦截表单提交，浏览器本地执行 TripEngine.planTrip()，结果写入 sessionStorage 后跳转 result.html；
+ *   5. 提交前把表单状态写入 sessionStorage，供 result.html「重新规划」回传还原。
  */
 (function () {
   'use strict';
@@ -15,8 +14,7 @@
   var $ = function (id) { return document.getElementById(id); };
 
   // -------------------------------------------------------------------------
-  // 高德全局配置（内置 Key + 安全密钥），优先供路线库模式免填使用；
-  // 用户手动输入仍可覆盖。
+  // 高德全局配置（内置 Key + 安全密钥），页面加载即读取，无需用户填写。
   // -------------------------------------------------------------------------
   var AMAP_CONFIG = {
     key: "7e24d842edd9222b450135d68ab51e2a",
@@ -34,72 +32,13 @@
   }
 
   // -------------------------------------------------------------------------
-  // 高德密钥：amap_js_api_key（JS API Key）+ amap_js_security_code（安全密钥）
-  // 保留跨页同步回填逻辑：localStorage 优先，sessionStorage 兜底
+  // 表单状态跨页同步（sessionStorage）
   // -------------------------------------------------------------------------
-  function storageGet(key) {
-    try { return localStorage.getItem(key); } catch (e) { return null; }
-  }
-  function storageSet(key, val) {
-    try { localStorage.setItem(key, val); } catch (e) {}
-  }
-  function storageRemove(key) {
-    try { localStorage.removeItem(key); } catch (e) {}
-  }
   function sessionGet(key) {
     try { return sessionStorage.getItem(key); } catch (e) { return null; }
   }
   function sessionSet(key, val) {
     try { sessionStorage.setItem(key, val); } catch (e) {}
-  }
-  function sessionRemove(key) {
-    try { sessionStorage.removeItem(key); } catch (e) {}
-  }
-
-  function initKeys() {
-    var jsInput = $('amap_js_api_key');
-    var secInput = $('amap_js_security_code');
-    var saveBox = $('save_keys');
-
-    function renderHint() {
-      var saved = !!(storageGet('amap_js_api_key') || storageGet('amap_js_security_code'));
-      var hint = $('keys_hint');
-      if (hint) hint.style.display = saved ? 'block' : 'none';
-      if (saveBox) saveBox.checked = saved;
-    }
-
-    // 回填：localStorage 优先，sessionStorage 兜底
-    var jsLocal = storageGet('amap_js_api_key');
-    var jsSession = sessionGet('amap_js_api_key');
-    if (jsInput) jsInput.value = jsLocal || jsSession || '';
-
-    var secLocal = storageGet('amap_js_security_code');
-    var secSession = sessionGet('amap_js_security_code');
-    if (secInput) secInput.value = secLocal || secSession || '';
-
-    renderHint();
-
-    if ($('keys_clear')) {
-      $('keys_clear').addEventListener('click', function () {
-        storageRemove('amap_js_api_key');
-        sessionRemove('amap_js_api_key');
-        storageRemove('amap_js_security_code');
-        sessionRemove('amap_js_security_code');
-        if (jsInput) jsInput.value = '';
-        if (secInput) secInput.value = '';
-        renderHint();
-      });
-    }
-
-    if (saveBox) {
-      saveBox.addEventListener('change', function () {
-        if (!saveBox.checked) {
-          storageRemove('amap_js_api_key');
-          storageRemove('amap_js_security_code');
-          renderHint();
-        }
-      });
-    }
   }
 
   // -------------------------------------------------------------------------
@@ -451,31 +390,9 @@
       e.preventDefault();
       showError('');
 
-      var jsKey = ($('amap_js_api_key').value || '').trim();
-      var securityCode = ($('amap_js_security_code').value || '').trim();
-      var saveBox = $('save_keys');
-
-      // 记忆 Key 与安全密钥：会话始终记住；勾选「保存到本机」时写入 localStorage
-      if (jsKey) {
-        sessionSet('amap_js_api_key', jsKey);
-        if (saveBox && saveBox.checked) storageSet('amap_js_api_key', jsKey);
-        else storageRemove('amap_js_api_key');
-      } else {
-        sessionRemove('amap_js_api_key');
-        storageRemove('amap_js_api_key');
-      }
-      if (securityCode) {
-        sessionSet('amap_js_security_code', securityCode);
-        if (saveBox && saveBox.checked) storageSet('amap_js_security_code', securityCode);
-        else storageRemove('amap_js_security_code');
-      } else {
-        sessionRemove('amap_js_security_code');
-        storageRemove('amap_js_security_code');
-      }
-
-      // SDK Key 与安全密钥：优先用户输入，缺省回退内置 AMAP_CONFIG
-      var sdkKey = jsKey || AMAP_CONFIG.key;
-      var sdkSecurity = securityCode || AMAP_CONFIG.securityJsCode;
+      // SDK Key 与安全密钥：直接使用内置 AMAP_CONFIG，无需用户填写
+      var sdkKey = AMAP_CONFIG.key;
+      var sdkSecurity = AMAP_CONFIG.securityJsCode;
 
       var submitBtn = form.querySelector('button[type="submit"]');
 
@@ -506,10 +423,6 @@
       var routeSel = $('route-library-select');
       var routeName = (routeSel && routeSel.value ? routeSel.value : '').trim();
       if (routeName) {
-        if (!sdkKey || !sdkSecurity) {
-          showError('请填写高德JS API Key 和安全密钥');
-          return;
-        }
         if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '规划中…'; }
         console.log('[main] 路线库模式，路线：', routeName);
         commitPlan(loadAMapSDK(sdkKey, sdkSecurity).then(function () {
@@ -544,11 +457,6 @@
       var count = parseInt(($('count').value || '').trim(), 10);
       var mustVisit = mustVisitItems.slice();
 
-      if (!sdkKey || !sdkSecurity) {
-        showError('请填写高德JS API Key 和安全密钥');
-        return;
-      }
-
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '规划中…'; }
       console.log('[main] 开始加载高德 SDK 并规划');
 
@@ -563,7 +471,10 @@
   // 启动
   // -------------------------------------------------------------------------
   function init() {
-    initKeys();
+    // 页面加载即使用内置 AMAP_CONFIG 预加载高德 SDK，后续规划直接复用
+    loadAMapSDK(AMAP_CONFIG.key, AMAP_CONFIG.securityJsCode).catch(function (err) {
+      console.error('[main] 高德 SDK 预加载失败', err);
+    });
     if (window.TripEngine) {
       initAddressSelectors();
       initRouteLibrary();
