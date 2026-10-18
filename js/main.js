@@ -234,7 +234,11 @@
       var communitySel = createCustomSelect(prefix + '_community');
       var manualInput = $(prefix + '_manual');
 
-      districtSel.setOptions(Object.keys(tree), '请选择主城区');
+      var districtOptions = [];
+      Object.keys(tree).forEach(function (district) {
+        districtOptions.push({ value: district, text: district });
+      });
+      districtSel.setOptions(districtOptions, '请选择主城区');
       streetSel.setOptions([], '请选择街道');
       communitySel.setOptions([], '请选择小区');
       streetSel.disabled = true;
