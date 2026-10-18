@@ -500,165 +500,6 @@
   // -------------------------------------------------------------------------
   var ROUTE_LIBRARY = [
     {
-      routeName: "北山街白堤经典湖景线",
-      region: "西湖区",
-      hiking: false,
-      totalDistanceKm: 3.6,
-      totalClimbM: 0,
-      durationHour: 3,
-      description: "沿湖平路，无爬升，西湖核心北岸风光",
-      points: [
-        { name: "断桥", lng: 120.1474, lat: 30.2627 },
-        { name: "白堤", lng: 120.1445, lat: 30.2616 },
-        { name: "平湖秋月", lng: 120.1412, lat: 30.2604 },
-        { name: "孤山（西泠印社）", lng: 120.1375, lat: 30.2593 },
-        { name: "西泠桥", lng: 120.1341, lat: 30.2585 },
-        { name: "岳王庙", lng: 120.1302, lat: 30.2576 }
-      ]
-    },
-    {
-      routeName: "西湖南线园林漫步线",
-      region: "西湖区",
-      hiking: false,
-      totalDistanceKm: 3.2,
-      totalClimbM: 0,
-      durationHour: 2.5,
-      description: "南山路平地，园林、湖景、古寺",
-      points: [
-        { name: "钱王祠", lng: 120.1422, lat: 30.2430 },
-        { name: "柳浪闻莺", lng: 120.1456, lat: 30.2405 },
-        { name: "长桥公园", lng: 120.1471, lat: 30.2372 },
-        { name: "雷峰塔", lng: 120.1443, lat: 30.2351 },
-        { name: "净慈寺", lng: 120.1418, lat: 30.2344 },
-        { name: "太子湾公园", lng: 120.1385, lat: 30.2336 }
-      ]
-    },
-    {
-      routeName: "杨公堤秘境慢游线",
-      region: "西湖区",
-      hiking: false,
-      totalDistanceKm: 3.8,
-      totalClimbM: 0,
-      durationHour: 3,
-      description: "人少安静，湖边平地，园林水湾，无登山台阶",
-      points: [
-        { name: "郭庄", lng: 120.1204, lat: 30.2467 },
-        { name: "曲院风荷西区", lng: 120.1246, lat: 30.2492 },
-        { name: "乌龟潭", lng: 120.1175, lat: 30.2441 },
-        { name: "浴鹄湾", lng: 120.1142, lat: 30.2425 }
-      ]
-    },
-    {
-      routeName: "运河文化老街线",
-      region: "拱墅区",
-      hiking: false,
-      totalDistanceKm: 3.5,
-      totalClimbM: 0,
-      durationHour: 3,
-      description: "运河沿岸平路，老杭州街巷、古寺、文艺街区",
-      points: [
-        { name: "香积寺", lng: 120.1420, lat: 30.2994 },
-        { name: "大兜路历史街区", lng: 120.1401, lat: 30.2971 },
-        { name: "小河直街", lng: 120.1346, lat: 30.2943 },
-        { name: "小河公园", lng: 120.1321, lat: 30.2920 }
-      ]
-    },
-    {
-      routeName: "拱宸桥运河文博线",
-      region: "拱墅区",
-      hiking: false,
-      totalDistanceKm: 2.8,
-      totalClimbM: 0,
-      durationHour: 2.5,
-      description: "大运河古迹，全部城市平地，博物馆集群",
-      points: [
-        { name: "拱宸桥", lng: 120.1484, lat: 30.3172 },
-        { name: "桥西历史街区", lng: 120.1462, lat: 30.3155 },
-        { name: "中国伞博物馆", lng: 120.1447, lat: 30.3142 },
-        { name: "扇博物馆", lng: 120.1433, lat: 30.3130 },
-        { name: "运河天地", lng: 120.1410, lat: 30.3116 }
-      ]
-    },
-    {
-      routeName: "南宋老城烟火线",
-      region: "上城区",
-      hiking: false,
-      totalDistanceKm: 3.0,
-      totalClimbM: 0,
-      durationHour: 3,
-      description: "老城区街巷，美食密集，全程平地，不上吴山",
-      points: [
-        { name: "德寿宫", lng: 120.1701, lat: 30.2421 },
-        { name: "鼓楼", lng: 120.1668, lat: 30.2375 },
-        { name: "大马弄", lng: 120.1651, lat: 30.2362 },
-        { name: "十五奎巷", lng: 120.1630, lat: 30.2348 },
-        { name: "晓霞弄", lng: 120.1617, lat: 30.2340 },
-        { name: "南宋御街、河坊街", lng: 120.1643, lat: 30.2354 }
-      ]
-    },
-    {
-      routeName: "五柳巷老城水乡线",
-      region: "上城区",
-      hiking: false,
-      totalDistanceKm: 2.6,
-      totalClimbM: 0,
-      durationHour: 2,
-      description: "城市小河、古桥，老杭州民居，完全平路",
-      points: [
-        { name: "五柳巷历史街区", lng: 120.1784, lat: 30.2442 },
-        { name: "斗富一/二/三桥", lng: 120.1761, lat: 30.2426 },
-        { name: "水上巴士梅花碑码头", lng: 120.1732, lat: 30.2410 },
-        { name: "庆春门古城墙遗址", lng: 120.1807, lat: 30.2465 }
-      ]
-    },
-    {
-      routeName: "钱江新城城市滨江线",
-      region: "上城区",
-      hiking: false,
-      totalDistanceKm: 3.4,
-      totalClimbM: 0,
-      durationHour: 2.5,
-      description: "现代都市江景，宽阔滨江步道，适合傍晚夜游",
-      points: [
-        { name: "城市阳台", lng: 120.2116, lat: 30.2573 },
-        { name: "杭州大剧院", lng: 120.2082, lat: 30.2551 },
-        { name: "日月同辉", lng: 120.2054, lat: 30.2534 },
-        { name: "来福士", lng: 120.2021, lat: 30.2516 },
-        { name: "钱王射潮雕塑", lng: 120.1976, lat: 30.2490 }
-      ]
-    },
-    {
-      routeName: "西湖文化广场人文线",
-      region: "拱墅/西湖交界",
-      hiking: false,
-      totalDistanceKm: 2.7,
-      totalClimbM: 0,
-      durationHour: 2,
-      description: "市中心城市慢行，博物馆+商圈结合",
-      points: [
-        { name: "西湖文化广场", lng: 120.1507, lat: 30.2684 },
-        { name: "武林码头", lng: 120.1482, lat: 30.2661 },
-        { name: "环北公园", lng: 120.1460, lat: 30.2643 },
-        { name: "武林路女装街", lng: 120.1431, lat: 30.2620 },
-        { name: "龙游路", lng: 120.1414, lat: 30.2607 }
-      ]
-    },
-    {
-      routeName: "虎跑-苏堤南段休闲线",
-      region: "西湖区",
-      hiking: false,
-      totalDistanceKm: 3.3,
-      totalClimbM: 0,
-      durationHour: 2.5,
-      description: "平地湖滨步道，不用上山，公园密林湖景",
-      points: [
-        { name: "虎跑公园门口", lng: 120.1243, lat: 30.2303 },
-        { name: "花港观鱼", lng: 120.1326, lat: 30.2365 },
-        { name: "苏堤南段（映波桥）", lng: 120.1347, lat: 30.2381 },
-        { name: "苏堤南段（锁澜桥）", lng: 120.1368, lat: 30.2397 }
-      ]
-    },
-    {
       routeName: "宝石山环湖组合线",
       region: "西湖区",
       hiking: true,
@@ -824,6 +665,165 @@
         { name: "石人亭", lng: 120.0811, lat: 30.2532 },
         { name: "十里琅珰", lng: 120.0866, lat: 30.2480 },
         { name: "五云山真际寺", lng: 120.0766, lat: 30.2423 }
+      ]
+    },
+    {
+      routeName: "北山街白堤经典湖景线",
+      region: "西湖区",
+      hiking: false,
+      totalDistanceKm: 3.6,
+      totalClimbM: 0,
+      durationHour: 3,
+      description: "沿湖平路，无爬升，西湖核心北岸风光",
+      points: [
+        { name: "断桥", lng: 120.1474, lat: 30.2627 },
+        { name: "白堤", lng: 120.1445, lat: 30.2616 },
+        { name: "平湖秋月", lng: 120.1412, lat: 30.2604 },
+        { name: "孤山（西泠印社）", lng: 120.1375, lat: 30.2593 },
+        { name: "西泠桥", lng: 120.1341, lat: 30.2585 },
+        { name: "岳王庙", lng: 120.1302, lat: 30.2576 }
+      ]
+    },
+    {
+      routeName: "西湖南线园林漫步线",
+      region: "西湖区",
+      hiking: false,
+      totalDistanceKm: 3.2,
+      totalClimbM: 0,
+      durationHour: 2.5,
+      description: "南山路平地，园林、湖景、古寺",
+      points: [
+        { name: "钱王祠", lng: 120.1422, lat: 30.2430 },
+        { name: "柳浪闻莺", lng: 120.1456, lat: 30.2405 },
+        { name: "长桥公园", lng: 120.1471, lat: 30.2372 },
+        { name: "雷峰塔", lng: 120.1443, lat: 30.2351 },
+        { name: "净慈寺", lng: 120.1418, lat: 30.2344 },
+        { name: "太子湾公园", lng: 120.1385, lat: 30.2336 }
+      ]
+    },
+    {
+      routeName: "杨公堤秘境慢游线",
+      region: "西湖区",
+      hiking: false,
+      totalDistanceKm: 3.8,
+      totalClimbM: 0,
+      durationHour: 3,
+      description: "人少安静，湖边平地，园林水湾，无登山台阶",
+      points: [
+        { name: "郭庄", lng: 120.1204, lat: 30.2467 },
+        { name: "曲院风荷西区", lng: 120.1246, lat: 30.2492 },
+        { name: "乌龟潭", lng: 120.1175, lat: 30.2441 },
+        { name: "浴鹄湾", lng: 120.1142, lat: 30.2425 }
+      ]
+    },
+    {
+      routeName: "运河文化老街线",
+      region: "拱墅区",
+      hiking: false,
+      totalDistanceKm: 3.5,
+      totalClimbM: 0,
+      durationHour: 3,
+      description: "运河沿岸平路，老杭州街巷、古寺、文艺街区",
+      points: [
+        { name: "香积寺", lng: 120.1420, lat: 30.2994 },
+        { name: "大兜路历史街区", lng: 120.1401, lat: 30.2971 },
+        { name: "小河直街", lng: 120.1346, lat: 30.2943 },
+        { name: "小河公园", lng: 120.1321, lat: 30.2920 }
+      ]
+    },
+    {
+      routeName: "拱宸桥运河文博线",
+      region: "拱墅区",
+      hiking: false,
+      totalDistanceKm: 2.8,
+      totalClimbM: 0,
+      durationHour: 2.5,
+      description: "大运河古迹，全部城市平地，博物馆集群",
+      points: [
+        { name: "拱宸桥", lng: 120.1484, lat: 30.3172 },
+        { name: "桥西历史街区", lng: 120.1462, lat: 30.3155 },
+        { name: "中国伞博物馆", lng: 120.1447, lat: 30.3142 },
+        { name: "扇博物馆", lng: 120.1433, lat: 30.3130 },
+        { name: "运河天地", lng: 120.1410, lat: 30.3116 }
+      ]
+    },
+    {
+      routeName: "南宋老城烟火线",
+      region: "上城区",
+      hiking: false,
+      totalDistanceKm: 3.0,
+      totalClimbM: 0,
+      durationHour: 3,
+      description: "老城区街巷，美食密集，全程平地，不上吴山",
+      points: [
+        { name: "德寿宫", lng: 120.1701, lat: 30.2421 },
+        { name: "鼓楼", lng: 120.1668, lat: 30.2375 },
+        { name: "大马弄", lng: 120.1651, lat: 30.2362 },
+        { name: "十五奎巷", lng: 120.1630, lat: 30.2348 },
+        { name: "晓霞弄", lng: 120.1617, lat: 30.2340 },
+        { name: "南宋御街、河坊街", lng: 120.1643, lat: 30.2354 }
+      ]
+    },
+    {
+      routeName: "五柳巷老城水乡线",
+      region: "上城区",
+      hiking: false,
+      totalDistanceKm: 2.6,
+      totalClimbM: 0,
+      durationHour: 2,
+      description: "城市小河、古桥，老杭州民居，完全平路",
+      points: [
+        { name: "五柳巷历史街区", lng: 120.1784, lat: 30.2442 },
+        { name: "斗富一/二/三桥", lng: 120.1761, lat: 30.2426 },
+        { name: "水上巴士梅花碑码头", lng: 120.1732, lat: 30.2410 },
+        { name: "庆春门古城墙遗址", lng: 120.1807, lat: 30.2465 }
+      ]
+    },
+    {
+      routeName: "钱江新城城市滨江线",
+      region: "上城区",
+      hiking: false,
+      totalDistanceKm: 3.4,
+      totalClimbM: 0,
+      durationHour: 2.5,
+      description: "现代都市江景，宽阔滨江步道，适合傍晚夜游",
+      points: [
+        { name: "城市阳台", lng: 120.2116, lat: 30.2573 },
+        { name: "杭州大剧院", lng: 120.2082, lat: 30.2551 },
+        { name: "日月同辉", lng: 120.2054, lat: 30.2534 },
+        { name: "来福士", lng: 120.2021, lat: 30.2516 },
+        { name: "钱王射潮雕塑", lng: 120.1976, lat: 30.2490 }
+      ]
+    },
+    {
+      routeName: "西湖文化广场人文线",
+      region: "拱墅/西湖交界",
+      hiking: false,
+      totalDistanceKm: 2.7,
+      totalClimbM: 0,
+      durationHour: 2,
+      description: "市中心城市慢行，博物馆+商圈结合",
+      points: [
+        { name: "西湖文化广场", lng: 120.1507, lat: 30.2684 },
+        { name: "武林码头", lng: 120.1482, lat: 30.2661 },
+        { name: "环北公园", lng: 120.1460, lat: 30.2643 },
+        { name: "武林路女装街", lng: 120.1431, lat: 30.2620 },
+        { name: "龙游路", lng: 120.1414, lat: 30.2607 }
+      ]
+    },
+    {
+      routeName: "虎跑-苏堤南段休闲线",
+      region: "西湖区",
+      hiking: false,
+      totalDistanceKm: 3.3,
+      totalClimbM: 0,
+      durationHour: 2.5,
+      description: "平地湖滨步道，不用上山，公园密林湖景",
+      points: [
+        { name: "虎跑公园门口", lng: 120.1243, lat: 30.2303 },
+        { name: "花港观鱼", lng: 120.1326, lat: 30.2365 },
+        { name: "苏堤南段（映波桥）", lng: 120.1347, lat: 30.2381 },
+        { name: "苏堤南段（锁澜桥）", lng: 120.1368, lat: 30.2397 }
       ]
     }
   ];
