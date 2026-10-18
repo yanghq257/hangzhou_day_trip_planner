@@ -611,9 +611,15 @@
       description: "先平地园林，再登山登顶，贵人阁视野极佳，俯瞰钱江+西湖，下山可走满觉陇平路",
       points: [
         { name: "虎跑公园大门", lng: 120.1241, lat: 30.2305 },
-        { name: "虎跑园林平地", lng: 120.1224, lat: 30.2326 },
-        { name: "贵人阁山顶", lng: 120.1182, lat: 30.2378 },
-        { name: "马儿山岗山脊", lng: 120.1154, lat: 30.2401 },
+        { name: "虎跑园林平地", lng: 120.1224, lat: 30.2326,
+          time: 45, tag: "平地",
+          desc: "虎跑泉、罗汉堂、滴翠轩，平缓园林步道，作为登山前热身，泉水景观清幽。" },
+        { name: "贵人阁山顶", lng: 120.1182, lat: 30.2378,
+          time: 70, tag: "登山",
+          desc: "攀登至贵人阁制高点，可同时俯瞰西湖与钱塘江双景，视野开阔，是这条线路核心观景台。" },
+        { name: "马儿山岗山脊", lng: 120.1154, lat: 30.2401,
+          time: 50, tag: "登山",
+          desc: "山脊土路，视野连绵起伏，山林野趣强，沿山脊平缓横切，之后下撤回到虎跑片区。" },
         { name: "满觉陇", lng: 120.1110, lat: 30.2386 }
       ]
     },
@@ -1589,18 +1595,21 @@
     var originGeo = makeGeo(pts[0]);
     var destGeo = makeGeo(pts[pts.length - 1]);
 
-    // 每条路线的总时长按中间点位数均摊，作为各中间点位的停留时长估算
+    // 每条路线的总时长按中间点位数均摊，作为各中间点位的停留时长估算（兜底）
     var visitEach = Math.max(20, Math.round((route.durationHour || 2) * 60 / Math.max(2, pts.length - 2)));
     var spots = [];
     for (var j = 1; j < pts.length - 1; j++) {
+      var pt = pts[j];
+      var ptTag = pt.tag || '';
       spots.push({
-        name: pts[j].name,
-        lng: pts[j].lng,
-        lat: pts[j].lat,
-        is_hiking: !!route.hiking,
-        visit_minutes: visitEach,
+        name: pt.name,
+        lng: pt.lng,
+        lat: pt.lat,
+        is_hiking: ptTag ? (ptTag === '登山') : !!route.hiking,
+        tag: ptTag,
+        visit_minutes: (pt.time !== undefined && pt.time !== null) ? parseInt(pt.time, 10) : visitEach,
         is_water_island: false,
-        description: route.description
+        description: pt.desc || route.description
       });
     }
 

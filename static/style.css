@@ -449,6 +449,11 @@ details.advanced[open] summary::before {
   color: var(--hike);
 }
 
+.tag-flat {
+  background: #3A2E1A;
+  color: #fbbf24;
+}
+
 .tag-boat {
   background: #142B3B;
   color: var(--primary);

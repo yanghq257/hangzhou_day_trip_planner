@@ -160,9 +160,17 @@
         var li = document.createElement('li');
         var title = document.createElement('div');
         title.className = 'spot-title';
+        var tagHtml = '';
+        if (p.tag === '登山') {
+          tagHtml = '<span class="tag tag-hike">登山</span>';
+        } else if (p.tag === '平地') {
+          tagHtml = '<span class="tag tag-flat">平地</span>';
+        } else if (p.is_hiking) {
+          tagHtml = '<span class="tag tag-hike">登山</span>';
+        }
         title.innerHTML =
           '<strong>' + esc(p.name) + '</strong>' +
-          (p.is_hiking ? '<span class="tag tag-hike">登山</span>' : '') +
+          tagHtml +
           (p.is_water_island ? '<span class="tag tag-boat">孤岛·游船</span>' : '') +
           '<span class="muted">' + esc(p.visit_minutes) + ' 分钟</span>';
         var desc = document.createElement('p');
