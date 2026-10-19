@@ -534,7 +534,19 @@
      description: "净慈寺，南屏晚钟，西湖南岸古寺。"},
     {name: "少年宫（断桥北侧）", lng: 120.147123, lat: 30.260702, is_hiking: true,
      visit_minutes: 20, is_water_island: false,
-     description: "断桥北侧，宝石山登山起点，杭州青少年活动中心。"}
+     description: "断桥北侧，宝石山登山起点，杭州青少年活动中心。"},
+    {name: "钱王射潮雕塑", lng: 120.183448, lat: 30.241348, is_hiking: false,
+     visit_minutes: 20, is_water_island: false,
+     description: "钱江新城钱王射潮大型雕塑，钱塘江地标。"},
+    {name: "杭州大剧院", lng: 120.208200, lat: 30.255100, is_hiking: false,
+     visit_minutes: 20, is_water_island: false,
+     description: "钱江新城杭州大剧院，钱塘江江畔文化地标。"},
+    {name: "日月同辉", lng: 120.205400, lat: 30.253400, is_hiking: false,
+     visit_minutes: 15, is_water_island: false,
+     description: "钱江新城日月同辉双塔，城市滨江标志性雕塑。"},
+    {name: "来福士", lng: 120.202100, lat: 30.251600, is_hiking: false,
+     visit_minutes: 25, is_water_island: false,
+     description: "杭州来福士双子塔，钱江新城商业地标。"}
   ];
   var PLACE_BY_NAME = {};
   PLACES.forEach(function (p) { PLACE_BY_NAME[p.name] = p; });
@@ -559,7 +571,8 @@
     "白鹤峰满觉陇": "白鹤峰(满觉陇)",
     "锅子顶山脊": "锅子顶",
     "将台山石刻": "将台山",
-    "蛤蟆峰": "宝石山"
+    "蛤蟆峰": "宝石山",
+    "城市阳台": "钱江新城城市阳台"
   };
   // -------------------------------------------------------------------------
   // 内置路线库（20条：10平地步行 + 10爬山/山平地组合），点位坐标全部硬编码
@@ -923,11 +936,11 @@
       durationHour: 2.5,
       description: "现代都市江景，宽阔滨江步道，适合傍晚夜游",
       points: [
-        { name: "城市阳台", lng: 120.2116, lat: 30.2573 },
-        { name: "杭州大剧院", lng: 120.2082, lat: 30.2551 },
-        { name: "日月同辉", lng: 120.2054, lat: 30.2534 },
-        { name: "来福士", lng: 120.2021, lat: 30.2516 },
-        { name: "钱王射潮雕塑", lng: 120.1976, lat: 30.2490 }
+        {name:"城市阳台"},
+        {name:"杭州大剧院"},
+        {name:"日月同辉"},
+        {name:"来福士"},
+        {name:"钱王射潮雕塑"},
       ]
     },
     {
