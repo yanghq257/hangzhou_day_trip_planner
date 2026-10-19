@@ -963,11 +963,23 @@
     }
   ];
   // 路线点位名称 -> 坐标（供 resolveAddress 本地优先匹配，CITY_LOCATIONS 之后兜底）
+  // route point 坐标解析：自带 lng/lat 优先，否则按 name 经 PLACE_ALIAS -> PLACE_BY_NAME 回退
+  function resolveRoutePoint(pt) {
+    if (pt.lng !== undefined && pt.lat !== undefined) {
+      return [pt.lng, pt.lat];
+    }
+    var placeName = PLACE_ALIAS[pt.name] || pt.name;
+    var place = PLACE_BY_NAME[placeName];
+    if (!place) {
+      throw new PlanError('路线点位【' + pt.name + '】在PLACES不存在');
+    }
+    return [place.lng, place.lat];
+  }
   var ROUTE_POINT_BY_NAME = {};
   ROUTE_LIBRARY.forEach(function (r) {
     (r.points || []).forEach(function (p) {
       if (!Object.prototype.hasOwnProperty.call(ROUTE_POINT_BY_NAME, p.name)) {
-        ROUTE_POINT_BY_NAME[p.name] = [p.lng, p.lat];
+        ROUTE_POINT_BY_NAME[p.name] = resolveRoutePoint(p);
       }
     });
   });
@@ -1643,17 +1655,6 @@
     var pts = route.points || [];
     if (pts.length < 2) {
       return Promise.reject(new PlanError('内置路线「' + routeName + '」点位不足，无法规划'));
-    }
-    function resolveRoutePoint(pt) {
-      if (pt.lng !== undefined && pt.lat !== undefined) {
-        return [pt.lng, pt.lat];
-      }
-      var placeName = PLACE_ALIAS[pt.name] || pt.name;
-      var place = PLACE_BY_NAME[placeName];
-      if (!place) {
-        throw new PlanError('路线点位【' + pt.name + '】在PLACES不存在');
-      }
-      return [place.lng, place.lat];
     }
     function makeGeo(pt) {
       var coords = resolveRoutePoint(pt);
