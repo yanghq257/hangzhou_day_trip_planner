@@ -1,7 +1,7 @@
 /*!
- * trip-engine.js
+ * trip-engine.js 
  * 杭州主城区游玩锻炼一日路线规划器 —— 纯前端规则引擎。
- *
+ * 修正说明：校正PLACES数组中偏移过大的GCJ‑02景点坐标，适配高德JS SDK；业务逻辑完全不变。
  * 本文件由原 Python 后端 utils.py 1:1 等价翻译而来：
  *   - 常量、静态数据（景点库/别名/三级联动/预存坐标）
  *   - 全部纯规则算法（匹配/合并/贪心/交通/时间轴/主流程）
@@ -12,7 +12,6 @@
  */
 (function (global) {
   'use strict';
-
   // -------------------------------------------------------------------------
   // 规划常量
   // -------------------------------------------------------------------------
@@ -41,25 +40,24 @@
     ["龙门山", "棋盘山", "狮峰"],
     ["吉庆山", "天马山", "北高峰"]
   ];
-
   // 连通登山线路的真实山间步道轨迹（沿西湖群山西山游步道/十里琅珰山脊线）。
   // key 为「成员名>成员名」，value 为 [lng, lat] 轨迹点串，首尾点与 PLACE_BY_NAME 坐标一致。
   var HIKING_TRAIL_PATHS = {
     "老和山>灵峰山>北高峰": [
-      [120.1190, 30.2650], [120.1175, 30.2644], [120.1160, 30.2638],
+      [120.1184, 30.2647], [120.1175, 30.2644], [120.1160, 30.2638],
       [120.1140, 30.2630], [120.1115, 30.2623], [120.1090, 30.2617],
       [120.1060, 30.2612], [120.1040, 30.2610], [120.1052, 30.2599],
       [120.1068, 30.2587], [120.1086, 30.2576], [120.1100, 30.2568],
-      [120.1110, 30.2560]
+      [120.097915, 30.245475]
     ],
     "北高峰>美人峰>龙门山": [
-      [120.1110, 30.2560], [120.1080, 30.2553], [120.1050, 30.2547],
+      [120.097915, 30.245475], [120.1080, 30.2553], [120.1050, 30.2547],
       [120.1020, 30.2542], [120.0990, 30.2539], [120.0960, 30.2540],
       [120.0935, 30.2528], [120.0912, 30.2514], [120.0890, 30.2498],
       [120.0870, 30.2487], [120.0860, 30.2480]
     ],
     "虎跑公园>贵人阁>玉皇山": [
-      [120.1378, 30.2045], [120.1368, 30.2056], [120.1358, 30.2066],
+      [120.129900, 30.208087], [120.1368, 30.2056], [120.1358, 30.2066],
       [120.1346, 30.2076], [120.1340, 30.2080], [120.1348, 30.2095],
       [120.1360, 30.2110], [120.1370, 30.2123], [120.1382, 30.2133],
       [120.1390, 30.2140]
@@ -80,14 +78,13 @@
       [120.1280, 30.2450], [120.1250, 30.2460], [120.1220, 30.2470],
       [120.1190, 30.2480], [120.1160, 30.2486], [120.1140, 30.2490],
       [120.1132, 30.2504], [120.1124, 30.2519], [120.1117, 30.2534],
-      [120.1112, 30.2548], [120.1110, 30.2560]
+      [120.1112, 30.2548], [120.097915, 30.245475]
     ],
     "老和山>北高峰": [
-      [120.1190, 30.2650], [120.1158, 30.2638], [120.1125, 30.2625],
-      [120.1095, 30.2608], [120.1100, 30.2586], [120.1110, 30.2560]
+      [120.1184, 30.2647], [120.1158, 30.2638], [120.1125, 30.2625],
+      [120.1095, 30.2608], [120.1100, 30.2586], [120.097915, 30.245475]
     ]
   };
-
   // -------------------------------------------------------------------------
   // 异常类
   // -------------------------------------------------------------------------
@@ -102,7 +99,6 @@
   }
   PlanError.prototype = Object.create(Error.prototype);
   PlanError.prototype.constructor = PlanError;
-
   // -------------------------------------------------------------------------
   // 内置地址数据（主城区 -> 街道 -> 小区；供前端三级联动使用）
   // -------------------------------------------------------------------------
@@ -121,7 +117,6 @@
     "万安桥地铁站": [120.1756, 30.2548],      // 上城区建国中路
     "蒋村地铁站": [120.0638, 30.2971]        // 西湖区蒋墩路与余杭塘路交叉口
   };
-
   var DISTRICT_STREET_COMMUNITY = {
     "上城区": {
       "四季青街道": ["新城国际花园彩园", "新城国际花园丽园", "万象城悦府", "庆春御府", "钱江三苑", "运新花苑", "水岸枫庭", "东方润园"],
@@ -168,15 +163,14 @@
       "公共交通/地标": ["杭州奥体中心", "滨江文化中心"]
     }
   };
-
   // -------------------------------------------------------------------------
-  // 内置景点库（杭州主城区）
+  // 内置景点库（杭州主城区）【已校对修正偏移过大GCJ‑02坐标】
   // -------------------------------------------------------------------------
   var PLACES = [
-    {name: "宝石山", lng: 120.1420, lat: 30.2590, is_hiking: true,
+    {name: "宝石山", lng: 120.148084, lat: 30.260999, is_hiking: true,
      visit_minutes: 90, is_water_island: false,
      description: "西湖边经典登山线，可俯瞰断桥与保俶塔。"},
-    {name: "北高峰", lng: 120.1110, lat: 30.2560, is_hiking: true,
+    {name: "北高峰", lng: 120.097915, lat: 30.245475, is_hiking: true,
      visit_minutes: 150, is_water_island: false,
      description: "灵隐寺后山，登顶可远眺西溪与西湖。",
      end_climb_point: "北高峰索道站",
@@ -187,7 +181,7 @@
     {name: "南高峰", lng: 120.1080, lat: 30.2180, is_hiking: true,
      visit_minutes: 60, is_water_island: false,
      description: "西湖群山南侧高点，茶园与登高观景结合。"},
-    {name: "老和山", lng: 120.1190, lat: 30.2650, is_hiking: true,
+    {name: "老和山", lng: 120.118400, lat: 30.264700, is_hiking: true,
      visit_minutes: 40, is_water_island: false,
      description: "城西轻量级登山点，适合短时间锻炼。"},
     {name: "凤凰山", lng: 120.1500, lat: 30.2250, is_hiking: true,
@@ -211,8 +205,7 @@
      hiking_route_desc: "马家坞村口沿石阶上山，经纳福云台后接入西湖群山西山游步道",
      end_climb_point: "北高峰",
      hiking_duration_min: 75},
-
-    {name: "西湖断桥", lng: 120.1510, lat: 30.2590, is_hiking: false,
+    {name: "西湖断桥", lng: 120.147370, lat: 30.261530, is_hiking: false,
      visit_minutes: 40, is_water_island: false,
      description: "白堤起点，西湖最经典的临水观景点。"},
     {name: "苏堤", lng: 120.1280, lat: 30.2200, is_hiking: false,
@@ -270,8 +263,7 @@
     {name: "拱宸桥", lng: 120.1310, lat: 30.3210, is_hiking: false,
      visit_minutes: 60, is_water_island: false,
      description: "京杭大运河杭州段标志性古桥与历史街区。"},
-
-    {name: "三潭印月", lng: 120.1450, lat: 30.2350, is_hiking: false,
+    {name: "三潭印月", lng: 120.145369, lat: 30.238845, is_hiking: false,
      visit_minutes: 60, is_water_island: true,
      description: "西湖湖中岛，一元纸币背面图案取景地，需游船前往。"},
     {name: "湖心亭", lng: 120.1480, lat: 30.2400, is_hiking: false,
@@ -280,10 +272,9 @@
     {name: "阮公墩", lng: 120.1400, lat: 30.2420, is_hiking: false,
      visit_minutes: 45, is_water_island: true,
      description: "西湖湖中岛，环境清幽，需游船前往。"},
-    {name: "虎跑公园", lng: 120.1378, lat: 30.2045, is_hiking: true,
+    {name: "虎跑公园", lng: 120.129900, lat: 30.208087, is_hiking: true,
      visit_minutes: 60, is_water_island: false,
      description: "虎跑梦泉，西湖新十景之一，以虎跑泉水、济公传说和山林步道闻名"},
-
     {name: "吴山", lng: 120.1600, lat: 30.2370, is_hiking: true,
      visit_minutes: 90, is_water_island: false,
      description: "吴山天风，老城山体，城隍阁俯瞰杭州老城，适合轻登山。",
@@ -358,7 +349,7 @@
      hiking_duration_min: 48},
     {name: "吉庆山", lng: 120.1280, lat: 30.2450, is_hiking: true,
      visit_minutes: 55, is_water_island: false,
-     description: "西湖西侧山体，毗邻灵隐，可串天马山-北高峰。",
+     description: "西湖西侧山体，毗邻灵隐，可串天马山‑北高峰。",
      start_climb_point: "杨公堤郭庄后山入口", start_climb_lng: 120.1310, start_climb_lat: 30.2480,
      end_climb_point: "北观音洞方向山脊岔口", end_climb_lng: 120.1210, end_climb_lat: 30.2420,
      hiking_duration_min: 42},
@@ -404,7 +395,6 @@
      start_climb_point: "半山公园主入口", start_climb_lng: 120.1790, start_climb_lat: 30.3480,
      end_climb_point: "虎山公园下撤口", end_climb_lng: 120.1710, end_climb_lat: 30.3570,
      hiking_duration_min: 50},
-
     {name: "孤山公园", lng: 120.1400, lat: 30.2510, is_hiking: false,
      visit_minutes: 70, is_water_island: false,
      description: "西湖孤山，浙江博物馆孤山馆、西泠印社，湖山人文一体。"},
@@ -414,10 +404,10 @@
     {name: "茅家埠", lng: 120.1160, lat: 30.2360, is_hiking: false,
      visit_minutes: 75, is_water_island: false,
      description: "西湖小众水域，野趣湖岸，人少静谧。"},
-    {name: "德寿宫", lng: 120.1680, lat: 30.2420, is_hiking: false,
+    {name: "德寿宫", lng: 120.173273, lat: 30.238678, is_hiking: false,
      visit_minutes: 90, is_water_island: false,
      description: "南宋德寿宫遗址，红墙网红打卡，宋代宫殿遗址。"},
-    {name: "城隍阁", lng: 120.1605, lat: 30.2378, is_hiking: false,
+    {name: "城隍阁", lng: 120.164726, lat: 30.236413, is_hiking: false,
      visit_minutes: 60, is_water_island: false,
      description: "吴山之巅楼阁，登高俯瞰杭州老城全景。"},
     {name: "万松书院", lng: 120.1470, lat: 30.2280, is_hiking: false,
@@ -516,10 +506,8 @@
      description: "白塔公园，钱塘江畔历史遗址公园，工业遗存与铁路文化结合。",
      category: "历史遗址"}
   ];
-
   var PLACE_BY_NAME = {};
   PLACES.forEach(function (p) { PLACE_BY_NAME[p.name] = p; });
-
   var PLACE_ALIAS = {
     "虎跑": "虎跑公园",
     "吴山天风": "吴山",
@@ -542,7 +530,6 @@
     "锅子顶山脊": "锅子顶",
     "将台山石刻": "将台山"
   };
-
   // -------------------------------------------------------------------------
   // 内置路线库（20条：10平地步行 + 10爬山/山平地组合），点位坐标全部硬编码
   // -------------------------------------------------------------------------
@@ -688,7 +675,7 @@
         { name: "望宸阁山顶", lng: 120.1850, lat: 30.3600,
           time: 70, tag: "登山",
           desc: "主峰望宸阁登顶，城北制高点，可俯瞰拱墅与杭城北部。" },
-        { name: "龙山山脊", lng: 120.1760, lat: 30.3720 /*待核验*/,
+               { name: "龙山山脊", lng: 120.1760, lat: 30.3720 /*待核验*/,
           time: 70, tag: "登山",
           desc: "山脊环线连续起伏，林木茂密，步道成熟。" },
         { name: "虎山山脊", lng: 120.1960, lat: 30.3730 /*待核验*/,
@@ -952,7 +939,6 @@
       ]
     }
   ];
-
   // 路线点位名称 -> 坐标（供 resolveAddress 本地优先匹配，CITY_LOCATIONS 之后兜底）
   var ROUTE_POINT_BY_NAME = {};
   ROUTE_LIBRARY.forEach(function (r) {
@@ -962,12 +948,10 @@
       }
     });
   });
-
   // -------------------------------------------------------------------------
   // 基础工具
   // -------------------------------------------------------------------------
   function toRadians(deg) { return deg * Math.PI / 180.0; }
-
   function haversineKm(lng1, lat1, lng2, lat2) {
     var r = 6371.0;
     var p1 = toRadians(lat1), p2 = toRadians(lat2);
@@ -978,14 +962,12 @@
             Math.sin(dlng / 2) * Math.sin(dlng / 2);
     return 2 * r * Math.asin(Math.sqrt(a));
   }
-
   function fmtTime(minutes) {
     minutes = parseInt(minutes, 10) % (24 * 60);
     var h = Math.floor(minutes / 60);
     var m = minutes % 60;
     return (h < 10 ? '0' + h : String(h)) + ':' + (m < 10 ? '0' + m : String(m));
   }
-
   function guessZoom(diagKm) {
     if (diagKm < 3) return 15;
     if (diagKm < 6) return 14;
@@ -994,15 +976,12 @@
     if (diagKm < 50) return 11;
     return 10;
   }
-
   function estimateWalkMinutes(km) {
     return Math.max(1, Math.round(km / 4.5 * 60));
   }
-
   function estimateDriveMinutes(km) {
     return Math.max(1, Math.round(km / 25.0 * 60 + 5));
   }
-
   function simplify(coords, maxPoints) {
     if (coords.length <= maxPoints) return coords.slice();
     var stride = Math.ceil(coords.length / maxPoints);
@@ -1014,7 +993,6 @@
     }
     return out;
   }
-
   // -------------------------------------------------------------------------
   // 景点匹配与路线构建
   // -------------------------------------------------------------------------
@@ -1031,29 +1009,23 @@
     }
     return null;
   }
-
   function round6(v) { return Math.round(v * 1000000) / 1000000; }
-
   function mergeConnectedHiking(spots) {
     var result = spots.slice();
-
     function mergeGroup(group) {
       var names = result.map(function (p) { return p.name; });
       var allIn = group.every(function (m) { return names.indexOf(m) !== -1; });
       if (!allIn) return;
-
       var members = group.map(function (m) {
         for (var i = 0; i < result.length; i++) if (result[i].name === m) return result[i];
         return null;
       });
-
       var lngSum = 0, latSum = 0, minSum = 0;
       members.forEach(function (m) {
         lngSum += m.lng;
         latSum += m.lat;
         minSum += parseInt(m.visit_minutes, 10);
       });
-
       var merged = {
         name: group.join(' → ') + '，连续登山线路',
         lng: round6(lngSum / members.length),
@@ -1065,7 +1037,6 @@
         connected_hiking: true,
         members: group.slice()
       };
-
       var out = [];
       var inserted = false;
       result.forEach(function (p) {
@@ -1077,9 +1048,7 @@
       });
       result = out;
     }
-
     MULTI_CONNECTED_HIKING.forEach(mergeGroup);
-
     // 兜底兼容：老和山 → 北高峰 连续登山线路
     var names = result.map(function (p) { return p.name; });
     var fallbackAllIn = CONNECTED_HIKING_MEMBERS.every(function (m) { return names.indexOf(m) !== -1; });
@@ -1111,10 +1080,8 @@
       });
       result = out;
     }
-
     return result;
   }
-
   function nearest(current, candidates) {
     var best = null, bestD = null;
     for (var i = 0; i < candidates.length; i++) {
@@ -1124,7 +1091,6 @@
     }
     return best;
   }
-
   function greedyOrder(startGeo, places) {
     var result = [];
     var current = startGeo;
@@ -1137,7 +1103,6 @@
     }
     return result;
   }
-
   // 计算一组坐标点的几何中心（重心）
   function centroidOf(points) {
     var lng = 0, lat = 0, n = 0;
@@ -1152,7 +1117,6 @@
     if (!n) return { lng: 120.15, lat: 30.25 };
     return { lng: lng / n, lat: lat / n };
   }
-
   // -------------------------------------------------------------------------
   // 高德 JS SDK 封装（替代原 REST 调用）
   // -------------------------------------------------------------------------
@@ -1162,14 +1126,12 @@
     if (typeof city === 'object') return city.name || '';
     return String(city);
   }
-
   function _isHangzhouDistrict(name) {
     var d = (name || '').trim();
     if (!d) return false;
     if (d.charAt(d.length - 1) !== '区') d += '区';
     return HANGZHOU_DISTRICTS.has(d);
   }
-
   function geocode(address, key) {
     return new Promise(function (resolve, reject) {
       if (!key) { reject(new PlanError('请先填写高德 API Key')); return; }
@@ -1178,7 +1140,6 @@
       var addr = rawAddr;
       if (addr && addr.indexOf('杭州市') !== 0) addr = '杭州市' + addr;
       console.log('[geocode] 拼接后地址:', addr);
-
       if (!global.AMap || !global.AMap.Geocoder) {
         reject(new PlanError('高德 JS API 尚未加载，请检查 JS API Key'));
         return;
@@ -1208,7 +1169,6 @@
               console.log('[geocode] adcode:', g.adcode);
               console.log('[geocode] city:', g.city);
               console.log('[geocode] district:', g.district);
-
               var geo = {
                 formatted: g.formattedAddress || address,
                 lng: lng,
@@ -1218,12 +1178,10 @@
                 district: (typeof g.district === 'object' && g.district) ? (g.district.name || '') : (g.district || ''),
                 adcode: String(g.adcode || '')
               };
-
               var cityOk = (geo.city === '杭州市');
               var districtOk = _isHangzhouDistrict(geo.district);
               var adcodeOk = (String(geo.adcode || '').indexOf(HANGZHOU_ADCODE_PREFIX) === 0);
               console.log('[geocode] 城市校验 cityOk:', cityOk, 'districtOk:', districtOk, 'adcodeOk:', adcodeOk, 'city:', geo.city, 'district:', geo.district, 'adcode:', geo.adcode);
-
               if (!cityOk && !districtOk && !adcodeOk) {
                 reject(new PlanError('该地址不在杭州市范围内，请重新填写'));
                 return;
@@ -1249,7 +1207,6 @@
       }
     });
   }
-
   function resolveAddress(address, key) {
     var addr = (address || '').trim();
     // 本地内置坐标库优先：CITY_LOCATIONS -> 路线库点位，命中则不再调用 geocoder
@@ -1283,7 +1240,6 @@
     }
     return geocode(addr, key);
   }
-
   function parseDirection(route) {
     if (!route) return null;
     var seconds = route.time;
@@ -1312,7 +1268,6 @@
     }
     return { duration_min: minutes, polyline: polyline };
   }
-
   function withTimeout(promise, ms, message) {
     var timeoutMessage = message || '请求超时';
     return new Promise(function (resolve, reject) {
@@ -1336,7 +1291,6 @@
       });
     });
   }
-
   function amapWalking(lng1, lat1, lng2, lat2, key) {
     return withTimeout(new Promise(function (resolve) {
       if (!global.AMap || !global.AMap.Walking) { resolve(null); return; }
@@ -1351,7 +1305,6 @@
       });
     }), 30000, '步行路线请求超时');
   }
-
   function amapDriving(lng1, lat1, lng2, lat2, key) {
     return withTimeout(new Promise(function (resolve) {
       if (!global.AMap || !global.AMap.Driving) { resolve(null); return; }
@@ -1365,7 +1318,6 @@
       });
     }), 8000, '驾车路线请求超时');
   }
-
   // -------------------------------------------------------------------------
   // 交通段 / 时间轴
   // -------------------------------------------------------------------------
@@ -1373,7 +1325,6 @@
     var points = [originGeo].concat(route).concat([destGeo]);
     var legs = [];
     var warnings = [];
-
     function eachLeg() {
       var chain = Promise.resolve();
       for (var i = 0; i < points.length - 1; i++) {
@@ -1385,14 +1336,12 @@
             var endName = end.name || end.formatted || '目的地';
             var startIsland = !!start.is_water_island;
             var endIsland = !!end.is_water_island;
-
             var leg = {
               start_name: startName,
               end_name: endName,
               start_island: startIsland,
               end_island: endIsland
             };
-
             if (startIsland || endIsland) {
               leg.mode = '游船';
               leg.duration_min = BOAT_MINUTES;
@@ -1400,7 +1349,6 @@
               legs.push(leg);
               return Promise.resolve();
             }
-
             var s_lng, s_lat, e_lng, e_lat;
             if (start.is_hiking && end.is_hiking) {
               s_lng = (start.end_climb_lng != null) ? start.end_climb_lng : start.lng;
@@ -1411,7 +1359,6 @@
               s_lng = start.lng; s_lat = start.lat;
               e_lng = end.lng; e_lat = end.lat;
             }
-
             var km = haversineKm(s_lng, s_lat, e_lng, e_lat);
             console.log('[步行查询] 起点:', startName, '终点:', endName);
             return amapWalking(s_lng, s_lat, e_lng, e_lat, key).then(function (walk) {
@@ -1439,7 +1386,6 @@
       }
       return chain;
     }
-
     return eachLeg().then(function () {
       legs.forEach(function (leg) {
         if (leg.mode === '步行' && leg.duration_min > WALK_LIMIT_MIN) {
@@ -1452,34 +1398,28 @@
       return [legs, warnings];
     });
   }
-
   function buildTimeline(originGeo, destGeo, route, legs) {
     var steps = [];
     var parts = DEFAULT_START_TIME.split(':');
     var current = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
     var travelTotal = 0;
     var visitTotal = 0;
-
     steps.push({ '类型': '出发', '地点': originGeo.formatted || '出发地', '时间': fmtTime(current), '耗时分钟': 0 });
-
     for (var i = 0; i < route.length; i++) {
       var p = route[i];
       var leg = legs[i];
       var buffered = Math.max(1, Math.ceil(leg.duration_min * BUFFER_FACTOR));
       travelTotal += buffered;
-
       var startT = current;
       var endT = current + buffered;
       steps.push({ '类型': '交通', '起点': leg.start_name, '终点': leg.end_name, '方式': leg.mode, '耗时分钟': buffered, '时间': fmtTime(startT), '结束时间': fmtTime(endT) });
       current = endT;
-
       startT = current;
       endT = current + parseInt(p.visit_minutes, 10);
       visitTotal += parseInt(p.visit_minutes, 10);
       steps.push({ '类型': '活动', '地点': p.name, '停留分钟': parseInt(p.visit_minutes, 10), '描述': p.description, '是否登山': p.is_hiking, '是否孤岛': p.is_water_island, '时间': fmtTime(startT), '结束时间': fmtTime(endT) });
       current = endT;
     }
-
     var lastLeg = legs[legs.length - 1];
     var lastBuffered = Math.max(1, Math.ceil(lastLeg.duration_min * BUFFER_FACTOR));
     travelTotal += lastBuffered;
@@ -1487,20 +1427,16 @@
     var eT = current + lastBuffered;
     steps.push({ '类型': '交通', '起点': lastLeg.start_name, '终点': lastLeg.end_name, '方式': lastLeg.mode, '耗时分钟': lastBuffered, '时间': fmtTime(sT), '结束时间': fmtTime(eT) });
     current = eT;
-
     steps.push({ '类型': '到达', '地点': destGeo.formatted || '目的地', '时间': fmtTime(current), '耗时分钟': 0 });
-
     var startMin = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
     var totalMinutes = current - startMin;
     return [steps, totalMinutes, travelTotal, visitTotal];
   }
-
   // -------------------------------------------------------------------------
   // 主规划流程
   // -------------------------------------------------------------------------
   function planTrip(originAddr, destinationAddr, hikingBool, mustVisitRaw, count, key) {
     if (!key) return Promise.reject(new PlanError('请先填写高德 API Key'));
-
     console.log('[planTrip] 规划开始', {
       origin: originAddr,
       destination: destinationAddr,
@@ -1508,7 +1444,6 @@
       must_visit: mustVisitRaw,
       count: count
     });
-
     var work = resolveAddress(originAddr, key).then(function (originGeo) {
       console.log('[planTrip] 出发地址解析完成', { formatted: originGeo.formatted, lng: originGeo.lng, lat: originGeo.lat });
       return resolveAddress(destinationAddr, key).then(function (destGeo) {
@@ -1519,14 +1454,12 @@
       var originGeo = geo.originGeo;
       var destGeo = geo.destGeo;
       var warnings = [];
-
       var pool;
       if (hikingBool) {
         pool = PLACES.slice();
       } else {
         pool = PLACES.filter(function (p) { return !p.is_hiking; });
       }
-
       var mustInclude = [];
       var unmatched = [];
       mustVisitRaw.forEach(function (raw) {
@@ -1544,10 +1477,8 @@
       unmatched.forEach(function (name) {
         warnings.push('未能识别必去景点「' + name + '」，已忽略');
       });
-
       var mustInc = mustInclude;
       if (hikingBool) mustInc = mergeConnectedHiking(mustInc);
-
       var route = greedyOrder(originGeo, mustInc);
       console.log('[planTrip] 必去景点合并后初始路径', route.map(function (p) { return p.name; }));
       var included = {};
@@ -1555,13 +1486,10 @@
       route.forEach(function (p) {
         (p.members || []).forEach(function (memberName) { included[memberName] = true; });
       });
-
       var candidates = pool.filter(function (p) { return !included[p.name]; });
-
       // 重心法：以「出发地 + 返回地 + 必去景点」的几何中心作为候选点筛选基准，
       // 避免候选点全部挤在出发地附近，导致去远处必去点时严重绕路。
       var center = centroidOf([originGeo, destGeo].concat(route));
-
       while (route.length < count && candidates.length) {
         var pick = null;
         if (hikingBool && !route.some(function (p) { return p.is_hiking; })) {
@@ -1572,31 +1500,25 @@
         candidates.splice(candidates.indexOf(pick), 1);
         route.push(pick);
       }
-
       // 选完后再按最近邻重新排序，保证从出发地开始的整体路线顺滑。
       route = greedyOrder(originGeo, route);
-
       console.log('[planTrip] 景点筛选完成，最终景点数', route.length, route.map(function (p) { return p.name; }));
-
       if (route.length < count) {
         warnings.push('可安排景点数量不足：目标 ' + count + ' 个，实际安排 ' + route.length + ' 个');
       }
       if (!route.length) {
         throw new PlanError('没有可安排的景点，请检查「是否爬山」选项与景点库是否冲突');
       }
-
       return buildLegs(originGeo, destGeo, route, key).then(function (legResult) {
         var legs = legResult[0];
         var legWarnings = legResult[1];
         legWarnings.forEach(function (w) { warnings.push(w); });
         console.log('[planTrip] 交通段计算完成', { legs: legs.length });
-
         var tl = buildTimeline(originGeo, destGeo, route, legs);
         var timeline = tl[0];
         var totalMinutes = tl[1];
         var travelTotal = tl[2];
         var visitTotal = tl[3];
-
         if (totalMinutes > MAX_TOTAL_MINUTES) {
           warnings.push('总时长约 ' + totalMinutes + ' 分钟（超过 ' + MAX_TOTAL_MINUTES + ' 分钟），超出一天合理范围');
         }
@@ -1604,7 +1526,6 @@
           var ratio = travelTotal / visitTotal;
           warnings.push('路上耗时约 ' + travelTotal + ' 分钟，占游玩时长 ' + visitTotal + ' 分钟的 ' + Math.round(ratio * 100) + '%，比例偏高');
         }
-
         var legsForMap = legs.map(function (leg) {
           return {
             mode: leg.mode,
@@ -1615,7 +1536,6 @@
             })
           };
         });
-
         var hikingMarkers = [];
         var hikingTrails = [];
         route.forEach(function (p) {
@@ -1652,14 +1572,12 @@
             }
           }
         });
-
         console.log('[planTrip] 规划完成', {
           spots: route.map(function (p) { return p.name; }),
           total_minutes: totalMinutes,
           travel_total: travelTotal,
           visit_total: visitTotal
         });
-
         return {
           origin: originGeo.formatted,
           destination: destGeo.formatted,
@@ -1681,19 +1599,16 @@
         };
       });
     });
-
     return withTimeout(work, 60000, '规划超时，请减少景点数量重试').catch(function (err) {
       console.error('[planTrip] 规划异常', err);
       throw err;
     });
   }
-
   // -------------------------------------------------------------------------
   // 路线库快速规划：points[0] 为起点，points[last] 为终点，中间点按固定顺序组成景点
   // -------------------------------------------------------------------------
   function planRoute(routeName, key) {
     if (!key) return Promise.reject(new PlanError('请先填写高德 API Key'));
-
     var route = null;
     for (var i = 0; i < ROUTE_LIBRARY.length; i++) {
       if (ROUTE_LIBRARY[i].routeName === routeName) {
@@ -1702,12 +1617,10 @@
       }
     }
     if (!route) return Promise.reject(new PlanError('未找到内置路线：' + routeName));
-
     var pts = route.points || [];
     if (pts.length < 2) {
       return Promise.reject(new PlanError('内置路线「' + routeName + '」点位不足，无法规划'));
     }
-
     function makeGeo(pt) {
       return {
         formatted: pt.name,
@@ -1719,10 +1632,8 @@
         adcode: '330100'
       };
     }
-
     var originGeo = makeGeo(pts[0]);
     var destGeo = makeGeo(pts[pts.length - 1]);
-
     // 每条路线的总时长按中间点位数均摊，作为各中间点位的停留时长估算（兜底）
     var visitEach = Math.max(20, Math.round((route.durationHour || 2) * 60 / Math.max(2, pts.length - 2)));
     var spots = [];
@@ -1742,21 +1653,17 @@
       }
       spots.push(spot);
     }
-
     var hikingLabel = route.hiking ? '是' : '否';
     var warnings = [];
-
     var work = buildLegs(originGeo, destGeo, spots, key).then(function (legResult) {
       var legs = legResult[0];
       var legWarnings = legResult[1];
       legWarnings.forEach(function (w) { warnings.push(w); });
-
       var tl = buildTimeline(originGeo, destGeo, spots, legs);
       var timeline = tl[0];
       var totalMinutes = tl[1];
       var travelTotal = tl[2];
       var visitTotal = tl[3];
-
       if (totalMinutes > MAX_TOTAL_MINUTES) {
         warnings.push('总时长约 ' + totalMinutes + ' 分钟（超过 ' + MAX_TOTAL_MINUTES + ' 分钟），超出一天合理范围');
       }
@@ -1764,7 +1671,6 @@
         var ratio = travelTotal / visitTotal;
         warnings.push('路上耗时约 ' + travelTotal + ' 分钟，占游玩时长 ' + visitTotal + ' 分钟的 ' + Math.round(ratio * 100) + '%，比例偏高');
       }
-
       var legsForMap = legs.map(function (leg) {
         return {
           mode: leg.mode,
@@ -1775,7 +1681,6 @@
           })
         };
       });
-
       var hikingMarkers = [];
       var hikingTrails = [];
       if (route.hiking) {
@@ -1787,7 +1692,6 @@
           hikingTrails.push([[allSpots[k].lng, allSpots[k].lat], [allSpots[k + 1].lng, allSpots[k + 1].lat]]);
         }
       }
-
       return {
         origin: originGeo.formatted,
         destination: destGeo.formatted,
@@ -1809,13 +1713,11 @@
         hiking_trails: hikingTrails
       };
     });
-
     return withTimeout(work, 60000, '路线规划超时').catch(function (err) {
       console.error('[planRoute] 路线规划异常', err);
       throw err;
     });
   }
-
   // -------------------------------------------------------------------------
   // 导出
   // -------------------------------------------------------------------------
@@ -1859,3 +1761,4 @@
     planRoute: planRoute
   };
 })(window);
+
