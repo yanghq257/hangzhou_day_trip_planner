@@ -558,7 +558,8 @@
     "癞子山": "癞子山(湘湖)",
     "白鹤峰满觉陇": "白鹤峰(满觉陇)",
     "锅子顶山脊": "锅子顶",
-    "将台山石刻": "将台山"
+    "将台山石刻": "将台山",
+    "蛤蟆峰": "宝石山"
   };
   // -------------------------------------------------------------------------
   // 内置路线库（20条：10平地步行 + 10爬山/山平地组合），点位坐标全部硬编码
@@ -573,20 +574,12 @@
       durationHour: 2.5,
       description: "爬山+湖景步行组合。上山台阶不多，登顶俯瞰西湖，后半段沿湖平路慢行，可随时下撤，主城区入门登山线",
       points: [
-        { name: "少年宫（断桥北侧）", lng: 120.1482, lat: 30.2645 },
-        { name: "宝石山保俶塔", lng: 120.1439, lat: 30.2645,
-          time: 40, tag: "登山",
-          desc: "沿宝石山台阶上行，保俶塔为西湖地标，登高可俯瞰断桥与白堤。" },
-        { name: "蛤蟆峰", lng: 120.1428, lat: 30.2651,
-          time: 40, tag: "登山",
-          desc: "宝石山制高点，岩石裸露，可远眺西湖与杭城，视野开阔。" },
-        { name: "紫云洞", lng: 120.1401, lat: 30.2649,
-          time: 35, tag: "登山",
-          desc: "山腰天然洞窟，清幽避暑，山脊步道林木茂密。" },
-        { name: "葛岭", lng: 120.1382, lat: 30.2626,
-          time: 35, tag: "登山",
-          desc: "山脊缓降至葛岭，石板步道为主，可看西湖北岸与曲院风荷。" },
-        { name: "曲院风荷", lng: 120.1271, lat: 30.2594 },
+        {name:"少年宫（断桥北侧）"},
+        {name:"紫云洞"},
+        {name:"黄龙洞"},
+        {name:"蛤蟆峰"},
+        {name:"宝石山"},
+        {name:"曲院风荷"},
       ]
     },
     {
@@ -1651,11 +1644,23 @@
     if (pts.length < 2) {
       return Promise.reject(new PlanError('内置路线「' + routeName + '」点位不足，无法规划'));
     }
+    function resolveRoutePoint(pt) {
+      if (pt.lng !== undefined && pt.lat !== undefined) {
+        return [pt.lng, pt.lat];
+      }
+      var placeName = PLACE_ALIAS[pt.name] || pt.name;
+      var place = PLACE_BY_NAME[placeName];
+      if (!place) {
+        throw new PlanError('路线点位【' + pt.name + '】在PLACES不存在');
+      }
+      return [place.lng, place.lat];
+    }
     function makeGeo(pt) {
+      var coords = resolveRoutePoint(pt);
       return {
         formatted: pt.name,
-        lng: pt.lng,
-        lat: pt.lat,
+        lng: coords[0],
+        lat: coords[1],
         province: '浙江省',
         city: '杭州市',
         district: '',
@@ -1669,10 +1674,11 @@
     var spots = [];
     for (var j = 1; j < pts.length - 1; j++) {
       var pt = pts[j];
+      var coords = resolveRoutePoint(pt);
       var spot = {
         name: pt.name,
-        lng: pt.lng,
-        lat: pt.lat,
+        lng: coords[0],
+        lat: coords[1],
         is_hiking: !!route.hiking,
         visit_minutes: (pt.time !== undefined) ? pt.time : visitEach,
         is_water_island: false,
